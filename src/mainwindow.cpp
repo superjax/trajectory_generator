@@ -56,7 +56,37 @@
 MainWindow::MainWindow()
 {
     scribble_area_ = new ScribbleArea(this);
-    setCentralWidget(scribble_area_);
+    main_layout_ = new QVBoxLayout();
+    main_layout_->addWidget(scribble_area_);
+
+    control_layout_ = new QHBoxLayout();
+    altitude_spin_box_ = new QDoubleSpinBox();
+    connect(altitude_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setAltitude(double)));
+    altitude_spin_box_->setSingleStep(0.1);
+    altitude_spin_box_->setMaximum(3.0);
+    altitude_spin_box_->setMinimum(0.1);
+    altitude_spin_box_->setValue(1.0);
+    altitude_spin_box_label_ = new QLabel();
+    altitude_spin_box_label_->setText("altitude (m):");
+    control_layout_->addWidget(altitude_spin_box_label_);
+    control_layout_->addWidget(altitude_spin_box_);
+
+    velocity_spin_box_ = new QDoubleSpinBox();
+    connect(velocity_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setVelocity(double)));
+    velocity_spin_box_->setSingleStep(0.1);
+    velocity_spin_box_->setMaximum(3.0);
+    velocity_spin_box_->setMinimum(0.1);
+    velocity_spin_box_->setValue(1.0);
+    velocity_spin_box_label_ = new QLabel();
+    velocity_spin_box_label_->setText("velocity (m/s):");
+    control_layout_->addWidget(velocity_spin_box_label_);
+    control_layout_->addWidget(velocity_spin_box_);
+
+    main_layout_->addLayout(control_layout_);
+
+    QWidget* central_widget = new QWidget();
+    setCentralWidget(central_widget);
+    centralWidget()->setLayout(main_layout_);
 
     createActions();
     createMenus();
@@ -137,4 +167,5 @@ void MainWindow::createMenus()
     menuBar()->addMenu(option_menu_);
     menuBar()->addMenu(help_menu_);
 }
+
 

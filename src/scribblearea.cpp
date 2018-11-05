@@ -67,7 +67,7 @@ ScribbleArea::ScribbleArea(QWidget *parent)
     modified_ = false;
     scribbling_ = false;
     pen_width_ = 1;
-    pen_color_ = Qt::blue;
+    pen_color_ = Qt::cyan;
     empty_ = true;
     rough_trajectory_.clear();
     trajectory_altitude_ = 1.0;
@@ -153,11 +153,17 @@ void ScribbleArea::setAltitude(double alt)
     trajectory_altitude_ = alt;
 }
 
+void ScribbleArea::setVelocity(double vel)
+{
+    velocity_ = vel;
+}
+
 void ScribbleArea::addPoint(const QPoint &point)
 {
-    rough_trajectory_.push_back(Vector3d{(double)point.x(),
+    rough_trajectory_.push_back(Vector4d{(double)point.x(),
                                          (double)point.y(),
-                                         trajectory_altitude_});
+                                         trajectory_altitude_,
+                                         velocity_});
 }
 
 

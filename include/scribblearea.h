@@ -76,12 +76,13 @@ public:
 //    bool saveImage(const QString &fileName, const char *fileFormat);
     void setPenColor(const QColor &newColor);
     void setPenWidth(int newWidth);
-    void setAltitude(double alt);
 
     QColor penColor() const { return pen_color_; }
     int penWidth() const { return pen_width_; }
 
 public slots:
+    void setAltitude(double alt);
+    void setVelocity(double vel);
     void clearImage();
     void print();
 
@@ -107,12 +108,13 @@ private:
     QPoint last_point_;
     QPoint first_point_;
     double trajectory_altitude_;
+    double velocity_;
 
     double pixel_to_meters_;
     static const double room_width_;
     static const double room_height_;
 
-    vector<Vector3d, aligned_allocator<Vector3d>> rough_trajectory_;
+    vector<Vector4d, aligned_allocator<Vector4d>> rough_trajectory_;
 };
 
 #endif
