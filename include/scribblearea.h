@@ -93,7 +93,7 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private:
-    void drawBoundingBox();
+    void drawBackground();
     void addPoint(const QPoint& point);
     void drawLineTo(const QPoint &endPoint);
     void resizeImage(QImage *image_, const QSize &newSize);

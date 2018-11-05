@@ -120,12 +120,18 @@ void ScribbleArea::setPenWidth(int newWidth)
     pen_width_ = newWidth;
 }
 
-void ScribbleArea::drawBoundingBox()
+void ScribbleArea::drawBackground()
 {
     QPainter qPainter(&image_);
     qPainter.setBrush(Qt::NoBrush);
-    qPainter.setPen(QPen(Qt::black, 10.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    qPainter.setPen(QPen(QColor(45, 45, 45), 20.0, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
     qPainter.drawRect(10,10,room_width_*pixel_to_meters_-10, room_height_*pixel_to_meters_-10);
+    int midpoint_x = room_width_*pixel_to_meters_/2;
+    int midpoint_y = room_height_*pixel_to_meters_/2;
+    qPainter.setPen(QPen(Qt::red, 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    qPainter.drawLine(QPoint{midpoint_x, midpoint_y}, QPoint{midpoint_x+pixel_to_meters_, midpoint_y});
+    qPainter.setPen(QPen(Qt::green, 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    qPainter.drawLine(QPoint{midpoint_x, midpoint_y}, QPoint{midpoint_x, midpoint_y+pixel_to_meters_});
     update();
 }
 
@@ -134,11 +140,11 @@ void ScribbleArea::drawBoundingBox()
 void ScribbleArea::clearImage()
 
 {
-    image_.fill(qRgb(255, 255, 255));
+    image_.fill(qRgb(0, 0, 0));
     rough_trajectory_.clear();
     modified_ = true;
     empty_ = true;
-    drawBoundingBox();
+    drawBackground();
     update();
 }
 
@@ -210,7 +216,7 @@ void ScribbleArea::resizeEvent(QResizeEvent *event)
     double y_scale = (height()-10) / room_height_;
     pixel_to_meters_ = qMin(x_scale, y_scale);
     clearImage();
-    drawBoundingBox();
+    drawBackground();
     update();
     cout << width() << ", " << height() << endl;
     QWidget::resizeEvent(event);
