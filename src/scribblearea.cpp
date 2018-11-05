@@ -66,7 +66,7 @@ ScribbleArea::ScribbleArea(QWidget *parent)
     setAttribute(Qt::WA_StaticContents);
     modified_ = false;
     scribbling_ = false;
-    pen_width_ = 1;
+    pen_width_ = 3;
     pen_color_ = Qt::cyan;
     empty_ = true;
     rough_trajectory_.clear();
@@ -126,12 +126,12 @@ void ScribbleArea::drawBackground()
     qPainter.setBrush(Qt::NoBrush);
     qPainter.setPen(QPen(QColor(45, 45, 45), 20.0, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
     qPainter.drawRect(10,10,room_width_*pixel_to_meters_-10, room_height_*pixel_to_meters_-10);
-    int midpoint_x = room_width_*pixel_to_meters_/2;
-    int midpoint_y = room_height_*pixel_to_meters_/2;
+    midpixel_x_ = room_width_*pixel_to_meters_/2;
+    midpixel_y_ = room_height_*pixel_to_meters_/2;
     qPainter.setPen(QPen(Qt::red, 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    qPainter.drawLine(QPoint{midpoint_x, midpoint_y}, QPoint{midpoint_x+pixel_to_meters_, midpoint_y});
+    qPainter.drawLine(QPoint{midpixel_x_, midpixel_y_}, QPoint{midpixel_x_+pixel_to_meters_, midpixel_y_});
     qPainter.setPen(QPen(Qt::green, 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    qPainter.drawLine(QPoint{midpoint_x, midpoint_y}, QPoint{midpoint_x, midpoint_y+pixel_to_meters_});
+    qPainter.drawLine(QPoint{midpixel_x_, midpixel_y_}, QPoint{midpixel_x_, midpixel_y_+pixel_to_meters_});
     update();
 }
 
@@ -160,8 +160,8 @@ void ScribbleArea::setVelocity(double vel)
 
 void ScribbleArea::addPoint(const QPoint &point)
 {
-    rough_trajectory_.push_back(Vector4d{(double)point.x(),
-                                         (double)point.y(),
+    rough_trajectory_.push_back(Vector4d{((double)point.x()-midpixel_x_)/pixel_to_meters_,
+                                         ((double)point.y()-midpixel_y_)/pixel_to_meters_,
                                          trajectory_altitude_,
                                          velocity_});
 }

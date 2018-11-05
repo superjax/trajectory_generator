@@ -111,6 +111,8 @@ private:
     double velocity_;
 
     double pixel_to_meters_;
+    int midpixel_x_;
+    int midpixel_y_;
     static const double room_width_;
     static const double room_height_;
 
