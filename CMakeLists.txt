@@ -26,9 +26,11 @@ add_executable(${PROJECT_NAME}
   src/main.cpp
   src/mainwindow.cpp
   src/scribblearea.cpp
+  src/trajectory.cpp
 
   include/mainwindow.h
   include/scribblearea.h
+  include/trajectory.h
 )
 target_link_libraries(${PROJECT_NAME}
     Qt5::Widgets

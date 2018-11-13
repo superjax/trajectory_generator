@@ -60,9 +60,13 @@
 
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
+#include "trajectory.h"
 
 using namespace Eigen;
 using namespace std;
+
+typedef vector<Vector4d, aligned_allocator<Vector4d>> trajVec;
+class TrajectorySmoother;
 
 class ScribbleArea : public QWidget
 {
@@ -96,8 +100,10 @@ protected:
 private:
     void drawBackground();
     void addPoint(const QPoint& point);
-    void drawLineTo(const QPoint &endPoint);
+    void drawLineTo(const QPoint &endPoint, QColor& pen_color);
     void resizeImage(QImage *image_, const QSize &newSize);
+    void smoothTrajectory();
+    void plotSmoothTrajectory();
 
     bool modified_;
     bool scribbling_;
@@ -116,7 +122,10 @@ private:
     static const double room_width_;
     static const double room_height_;
 
-    vector<Vector4d, aligned_allocator<Vector4d>> rough_trajectory_;
+    trajVec rough_trajectory_;
+    trajVec smooth_traj_;
+
+    TrajectorySmoother* smoother_ = nullptr;
 };
 
 #endif
