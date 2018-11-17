@@ -5,7 +5,8 @@ find_package(Qt5Widgets)
 find_package(Qt5PrintSupport)
 #find_package(Qt5Gui)
 find_package(Qt5OpenGL REQUIRED)
-find_package(GTest)
+find_package(GTest REQUIRED)
+find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 if (${GTEST_NOTFOUND})
@@ -31,14 +32,17 @@ add_executable(${PROJECT_NAME}
   src/scribblearea.cpp
   src/trajectory.cpp
   src/multirotor.cpp
+  src/factor.cpp
 
   include/mainwindow.h
   include/scribblearea.h
   include/trajectory.h
   include/multirotor.h
+  include/factor.h
 )
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(TrajectoryGenerator
     Qt5::Widgets
     Qt5::PrintSupport
     Qt5::OpenGL
+    ${CERES_LIBRARIES}
 )

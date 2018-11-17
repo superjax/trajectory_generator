@@ -284,8 +284,16 @@ void ScribbleArea::print()
 
 void ScribbleArea::smoothTrajectory()
 {
-  smoother_ = new TrajectorySmoother(rough_trajectory_);
-  smooth_traj_ = smoother_->smooth();
+  smoother_ = new TrajectorySmoother(rough_trajectory_, 0.5, 2);
+
+  MatrixXd optimized_full_traj_ = smoother_->optimize();
+
+  smooth_traj_.resize(optimized_full_traj_.cols());
+  for (int i = 0; i < optimized_full_traj_.cols(); i++)
+  {
+    smooth_traj_[i].segment<3>(0) = optimized_full_traj_.block<3,1>(0, i);
+    smooth_traj_[i](3) = optimized_full_traj_.block<3,1>(7, i).norm();
+  }
 }
 
 

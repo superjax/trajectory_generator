@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <Eigen/Core>
+#include <ceres/ceres.h>
 
 #include "scribblearea.h"
 
@@ -13,12 +14,34 @@ typedef vector<Vector4d, aligned_allocator<Vector4d>> trajVec;
 class TrajectorySmoother
 {
 public:
-  TrajectorySmoother(const trajVec& rough_traj);
-  void downSample(double t);
-  const trajVec& smooth();
+  TrajectorySmoother(const trajVec& rough_traj, double dt, int steps_per_node);
+  const MatrixXd &optimize();
+
+
+private:
+  void downSample();
+  void initializeTrajectory();
+  void createParameterBlocks();
+  void addDynamicsCost(int from_id, int to_id);
+  void addPositionCost(int downsampled_id, int optimized_id);
+  void buildOptimizationGraph();
+  void runOptimization();
+
 
   const trajVec& rough_traj_;
-  trajVec smooth_traj_;
+  trajVec downsampled_traj_;
+  MatrixXd optimized_traj_states_;
+  MatrixXd optimized_traj_inputs_;
 
+  ceres::Problem* problem_ = nullptr;
 
+  double dt_node_;
+  int steps_per_node_;
+
+  double hover_throttle_ = 0.5;
+  double drag_term_ = 0.2;
+
+  Vector3d pos_weight_;
+  double vel_weight_;
+  Vector4d input_weight_;
 };
