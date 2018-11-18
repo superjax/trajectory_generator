@@ -71,9 +71,13 @@ public:
     static const Matrix<T,3,1> ez = (Matrix<T,3,1>() << (T)0, (T)0, (T)1.0).finished();
     static const Matrix<T,3,3> Ones_UL =(Matrix<T,3,3>() << (T)1.0, (T)0, (T)0,  (T)0, (T)1.0, (T)0,  (T)0, (T)0, (T)0).finished();
 
+    volatile Matrix<T,3,1> vdebug =ez * (u.F/(T)hover_throttle_) + x.q.rotp(ez) - ((T)cd_ * Ones_UL * x.v - u.w.cross(x.v)) * (T)(1.0/9.80665);
+
+
     dx.p = x.q.rotp(x.v);
     dx.q = u.w;
     dx.v = ez * (u.F/(T)hover_throttle_) + x.q.rotp(ez) - ((T)cd_ * Ones_UL * x.v - u.w.cross(x.v)) * (T)(1.0/9.80665);
+
   }
 
   template<typename T>

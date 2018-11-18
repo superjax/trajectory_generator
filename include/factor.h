@@ -11,12 +11,13 @@ using namespace xform;
 class DynamicsCostFunction
 {
 public:
-  DynamicsCostFunction(double dt, double drag_term, double hover_throttle, const Vector4d& input_weight) :
+  DynamicsCostFunction(double dt, double drag_term, double hover_throttle, const Vector9d& state_weight, const Vector4d& input_weight) :
     dt_{dt},
     drag_term_{drag_term},
     hover_throttle_{hover_throttle}
   {
     input_weight_ = input_weight;
+    state_weight_ = state_weight;
   }
 
   template <typename T>
@@ -32,10 +33,11 @@ public:
 
     mr.F(x0, u, dt_, x1hat);
 
-    Map<Matrix<T,10,1>> res(_r);
+    Map<Matrix<T,13,1>> res(_r);
     res.template segment<6>(0) = x1.T - x1hat.T;
     res.template segment<3>(6) = x1.v - x1hat.v;
-    res(9,0) = u.arr.transpose() * input_weight_;
+    Matrix<T,4,1> eq_input_{(T)0, (T)0, (T)0, (T)hover_throttle_};
+    res.template segment<4>(9) = u.arr - eq_input_;
     return true;
   }
 
@@ -44,9 +46,10 @@ private:
   double drag_term_;
   double hover_throttle_;
   Vector4d input_weight_;
+  Vector9d state_weight_;
 };
 
-typedef ceres::AutoDiffCostFunction<DynamicsCostFunction, 10, 10, 10, 4> DynamicsFactor;
+typedef ceres::AutoDiffCostFunction<DynamicsCostFunction, 13, 10, 10, 4> DynamicsFactor;
 
 
 class PositionConstraintCostFunction
@@ -66,8 +69,12 @@ public:
     Multirotor::State<T> x(_x);
     Map<Matrix<T,4,1>> res(_r);
     res.template segment<3>(0) = pos_weight_*(x.p - pos_);
-//    res(3,0) = (T)vel_weight_ * (x.v.norm() - (T)vel_);
-    res(3,0) = (T)0.0;
+
+    if (x.v.norm() > 1e-8)
+//      res(3,0) = (T)vel_weight_ * (x.v.norm() - (T)vel_);
+      res(3,0) = x.v.norm() - (T)vel_;
+    else
+      res(3,0) = (T)0.0;
     return true;
   }
 

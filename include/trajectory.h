@@ -5,6 +5,8 @@
 #include <Eigen/Core>
 #include <ceres/ceres.h>
 
+#include "multirotor.h"
+#include "factor.h"
 #include "scribblearea.h"
 
 using namespace Eigen;
@@ -26,12 +28,16 @@ private:
   void addPositionCost(int downsampled_id, int optimized_id);
   void buildOptimizationGraph();
   void runOptimization();
+  void log() const;
 
 
   const trajVec& rough_traj_;
   trajVec downsampled_traj_;
   MatrixXd optimized_traj_states_;
   MatrixXd optimized_traj_inputs_;
+
+  vector<DynamicsCostFunction*> dynamics_constraints_;
+  vector<PositionConstraintCostFunction*> position_constraints_;
 
   ceres::Problem* problem_ = nullptr;
 
@@ -44,4 +50,5 @@ private:
   Vector3d pos_weight_;
   double vel_weight_;
   Vector4d input_weight_;
+  Vector9d state_weight_;
 };
