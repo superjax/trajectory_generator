@@ -61,10 +61,4 @@ for i in range(4):
     ax.plot(dynamic_costs[:, i], label=labels[i])
     ax.legend()
 
-plt.show()
-
-
-
-
-
-debug = 1
+plt.show()  

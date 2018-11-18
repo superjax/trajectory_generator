@@ -11,9 +11,9 @@ TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double dt_node, int s
   pos_weight_.setConstant(1.0);
   vel_weight_ = 1.0;
   input_weight_ << 1.0, 1.0, 1.0, 1.0;
-  state_weight_ << 100.0, 100.0, 100.0,
-                   100.0, 100.0, 100.0,
-                   100.0, 100.0, 100.0;
+  state_weight_ << 10000.0, 10000.0, 10000.0,
+                   10000.0, 10000.0, 10000.0,
+                   10000.0, 10000.0, 10000.0;
 }
 
 
