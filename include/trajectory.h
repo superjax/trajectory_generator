@@ -49,6 +49,12 @@ private:
 
   Vector3d pos_weight_;
   double vel_weight_;
+  double tau_wxy_;
+  double tau_wz_;
+  double tau_F_;
+  double max_wxy_;
+  double max_wz_;
+  double max_F_;
   Vector4d input_weight_;
   Vector9d state_weight_;
 };

@@ -7,13 +7,20 @@ TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double dt_node, int s
   dt_node_(dt_node),
   steps_per_node_(steps_per_node)
 {
-  hover_throttle_ = 0.5;
+  hover_throttle_ = 0.468;
   pos_weight_.setConstant(1.0);
   vel_weight_ = 1.0;
   input_weight_ << 1.0, 1.0, 1.0, 1.0;
   state_weight_ << 10000.0, 10000.0, 10000.0,
                    10000.0, 10000.0, 10000.0,
                    10000.0, 10000.0, 10000.0;
+
+  tau_wxy_ = 0.1904;
+  tau_wz_ = 0.2164;
+  tau_F_ = 0.2164;
+  max_wxy_ = 6.0;
+  max_wz_ = 0.25;
+  max_F_ = 1.0/hover_throttle_;
 }
 
 
@@ -92,10 +99,11 @@ void TrajectorySmoother::buildOptimizationGraph()
 void TrajectorySmoother::initializeTrajectory()
 {
   int num_states = downsampled_traj_.size() * steps_per_node_;
-  optimized_traj_states_.setZero(10, num_states);
+  optimized_traj_states_.setZero(14, num_states);
   optimized_traj_inputs_.setZero(4, num_states);
 
   optimized_traj_states_.row(3).setConstant(1.0);
+  optimized_traj_states_.row(12).setConstant(hover_throttle_);
   optimized_traj_inputs_.row(3).setConstant(hover_throttle_);
 }
 
@@ -107,8 +115,18 @@ void TrajectorySmoother::createParameterBlocks()
     for (int i = 0; i < steps_per_node_; i++)
     {
       int id = i + n*steps_per_node_;
-      problem_->AddParameterBlock(optimized_traj_states_.data() + (id*10), 10, new NodeLocalParam);
+      problem_->AddParameterBlock(optimized_traj_states_.data() + (id*14), 14, new NodeLocalParam);
       problem_->AddParameterBlock(optimized_traj_inputs_.data() + (id*4), 4);
+
+      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 0, max_wxy_);
+      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 1, max_wxy_);
+      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 2, max_wz_);
+      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 3, max_F_);
+
+      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 0, -max_wxy_);
+      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 1, -max_wxy_);
+      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 2, -max_wz_);
+      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 3, 0.0);
     }
   }
 }
@@ -121,11 +139,11 @@ void TrajectorySmoother::log() const
   ofstream optimized_inputs_file("../logs/optimized_inputs.bin");
   ofstream dynamics_costs_file("../logs/dynamics_costs.bin");
 
-  MatrixXd dynamic_costs(4, optimized_traj_states_.size());
+  MatrixXd dynamic_costs(17, optimized_traj_states_.size());
   for (int i = 0; i < dynamics_constraints_.size(); i++)
   {
-    (*dynamics_constraints_[i])(optimized_traj_states_.data() + (i*10),
-                                optimized_traj_states_.data() + ((i+1)*10),
+    (*dynamics_constraints_[i])(optimized_traj_states_.data() + (i*14),
+                                optimized_traj_states_.data() + ((i+1)*14),
                                 optimized_traj_states_.data() + (i*4),
                                 dynamic_costs.data() + (i*4));
   }
@@ -141,11 +159,12 @@ void TrajectorySmoother::log() const
 void TrajectorySmoother::addDynamicsCost(int from_id, int to_id)
 {
   double dynamics_dt = dt_node_ / (double)(steps_per_node_);
-  dynamics_constraints_.push_back(new DynamicsCostFunction(dynamics_dt, drag_term_, hover_throttle_, state_weight_, input_weight_));
+  dynamics_constraints_.push_back(new DynamicsCostFunction(dynamics_dt, drag_term_, hover_throttle_, state_weight_, input_weight_,
+                                                           tau_wxy_, tau_wz_, tau_F_));
   problem_->AddResidualBlock(new DynamicsFactor(*(dynamics_constraints_.end()-1)),
                              NULL,
-                             optimized_traj_states_.data() + (from_id * 10),
-                             optimized_traj_states_.data() + (to_id * 10),
+                             optimized_traj_states_.data() + (from_id * 14),
+                             optimized_traj_states_.data() + (to_id * 14),
                              optimized_traj_inputs_.data() + (from_id * 4));
 }
 
@@ -175,5 +194,5 @@ void TrajectorySmoother::addPositionCost(int downsampled_id, int optimized_id)
   position_constraints_.push_back(new PositionConstraintCostFunction(desired_pos, desired_vel, pos_weight_, vel_weight_));
   problem_->AddResidualBlock(new ConstraintFactor(*(position_constraints_.end()-1)),
                              NULL,
-                             optimized_traj_states_.data() + (optimized_id*10));
+                             optimized_traj_states_.data() + (optimized_id*14));
 }
