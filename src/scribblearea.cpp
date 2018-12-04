@@ -74,38 +74,6 @@ ScribbleArea::ScribbleArea(QWidget *parent)
 }
 
 
-//bool ScribbleArea::openImage(const QString &fileName)
-//{
-//    QImage loadedImage;
-//    if (!loadedImage.load(fileName))
-//        return false;
-
-//    QSize newSize = loadedImage.size().expandedTo(size());
-//    resizeImage(&loadedImage, newSize);
-//    image_ = loadedImage;
-//    modified_ = false;
-//    update();
-//    return true;
-//}
-
-
-
-//bool ScribbleArea::saveImage(const QString &fileName, const char *fileFormat)
-
-//{
-//    QImage visibleImage = image_;
-//    resizeImage(&visibleImage, size());
-
-//    if (visibleImage.save(fileName, fileFormat)) {
-//        modified_ = false;
-//        return true;
-//    } else {
-//        return false;
-//    }
-//}
-
-
-
 void ScribbleArea::setPenColor(const QColor &newColor)
 
 {
@@ -196,11 +164,6 @@ void ScribbleArea::mouseReleaseEvent(QMouseEvent *event)
     drawLineTo(event->pos(), pen_color_);
     scribbling_ = false;
     drawLineTo(first_point_, pen_color_);
-    for (int i = 0; i < rough_trajectory_.size(); i++)
-    {
-      cout << rough_trajectory_[i].transpose() << endl;
-    }
-
     smoothTrajectory();
     plotSmoothTrajectory();
   }
@@ -227,7 +190,6 @@ void ScribbleArea::resizeEvent(QResizeEvent *event)
   clearImage();
   drawBackground();
   update();
-  cout << width() << ", " << height() << endl;
   QWidget::resizeEvent(event);
 }
 
@@ -285,6 +247,12 @@ void ScribbleArea::print()
 void ScribbleArea::smoothTrajectory()
 {
   smoother_ = new TrajectorySmoother(rough_trajectory_, 0.5, 100);
+  double wall_buffer = 1.0;
+  double max_x = room_width_ - (double)midpixel_x_ / pixel_to_meters_ - wall_buffer;
+  double min_x = max_x - room_width_ + 2.0*wall_buffer;
+  double max_y = room_height_ - (double)midpixel_y_ / pixel_to_meters_ - wall_buffer;
+  double min_y = max_y - room_height_ + 2.0*wall_buffer;
+  smoother_->setBounds(max_x, min_x, max_y, min_y, velocity_, 0.5);
 
   MatrixXd optimized_full_traj_ = smoother_->optimize();
 
@@ -293,11 +261,6 @@ void ScribbleArea::smoothTrajectory()
   {
     smooth_traj_[i].segment<3>(0) = optimized_full_traj_.block<3,1>(0, i);
     smooth_traj_[i](3) = 1.0;
-  }
-
-  for (int i = 0; i < smooth_traj_.size(); i++)
-  {
-    cout << smooth_traj_[i].transpose() << endl;
   }
 }
 

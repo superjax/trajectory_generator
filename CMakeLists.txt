@@ -29,9 +29,7 @@ include_directories(include
 
 add_library(TrajOpt
     src/trajectory.cpp
-    src/multirotor.cpp
-    include/trajectory.h
-    include/multirotor.h)
+    include/trajectory.h)
 target_link_libraries(TrajOpt
     mav_trajectory_generation
     Qt5::Widgets
