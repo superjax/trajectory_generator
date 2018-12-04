@@ -4,6 +4,8 @@
 
 #include <mav_trajectory_generation/polynomial_optimization_nonlinear.h>
 #include <mav_trajectory_generation/polynomial_optimization_linear.h>
+#include <mav_trajectory_generation/trajectory.h>
+
 
 TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double dt_node, int steps_per_node) :
   rough_traj_(vec),
@@ -86,8 +88,22 @@ const MatrixXd& TrajectorySmoother::optimize()
   mav_trajectory_generation::Segment::Vector segments;
   opt.getPolynomialOptimizationRef().getSegments(&segments);
 
+  mav_trajectory_generation::Trajectory trajectory;
+  opt.getTrajectory(&trajectory);
 
-  MatrixXd optimized_traj_states_;
+  double t_start = trajectory.getMinTime();
+  double t_end = trajectory.getMaxTime();
+  double dt = 0.02;
+  std::vector<Eigen::VectorXd> result;
+  std::vector<double> sampling_times; // Optional.
+  trajectory.evaluateRange(t_start, t_end, dt, mav_trajectory_generation::derivative_order::POSITION, &result, &sampling_times);
+
+  optimized_traj_states_.resize(4, result.size());
+  for (int i = 0; i < result.size(); i++)
+  {
+    optimized_traj_states_.block<3,1>(0,i) = result[i];
+    optimized_traj_states_(3,i) = 1.0;
+  }
   return optimized_traj_states_;
 }
 

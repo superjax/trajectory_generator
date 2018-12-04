@@ -292,7 +292,7 @@ void ScribbleArea::smoothTrajectory()
   for (int i = 0; i < optimized_full_traj_.cols(); i++)
   {
     smooth_traj_[i].segment<3>(0) = optimized_full_traj_.block<3,1>(0, i);
-    smooth_traj_[i](3) = optimized_full_traj_.block<3,1>(7, i).norm();
+    smooth_traj_[i](3) = 1.0;
   }
 
   for (int i = 0; i < smooth_traj_.size(); i++)
