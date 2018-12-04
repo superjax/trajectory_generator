@@ -141,16 +141,6 @@ void TrajectorySmoother::downSample()
     }
     j++;
   }
-
-//  Vector4d v_to_start = downsampled_traj_[0] - *(downsampled_traj_.end()-1);
-//  double dist =  dt_node_*rough_traj_[i](3);
-//  while (v_to_start.topRows(3).norm() > dist)
-//  {
-//    Vector4d new_point = *(downsampled_traj_.end()-1) + v_to_start / v_to_start.norm() * dist;
-//    downsampled_traj_.push_back(sat(new_point));
-//    v_to_start = downsampled_traj_[0] - new_point;
-//    dist =  dt_node_*new_point(3);
-//  }
 }
 
 const MatrixXd& TrajectorySmoother::optimize()
@@ -170,6 +160,7 @@ const MatrixXd& TrajectorySmoother::optimize()
 
 void TrajectorySmoother::log() const
 {
+  ofstream time_file("../logs/time.bin");
   ofstream original_file("../logs/original.bin");
   ofstream downsampled_file("../logs/downsampled.bin");
   ofstream optimized_states_file("../logs/optimized_states.bin");
@@ -177,9 +168,11 @@ void TrajectorySmoother::log() const
 
   original_file.write((char*)rough_traj_.data(), sizeof(double) * 4 * rough_traj_.size());
   downsampled_file.write((char*)downsampled_traj_.data(), sizeof(double)*4*downsampled_traj_.size());
+  time_file.write((char*)optimized_traj_t_.data(), sizeof(double) *optimized_traj_t_.size());
   optimized_states_file.write((char*)optimized_traj_states_.data(), sizeof(double)*optimized_traj_states_.rows()*optimized_traj_states_.cols());
   optimized_inputs_file.write((char*)optimized_traj_inputs_.data(), sizeof(double)*optimized_traj_inputs_.rows()*optimized_traj_inputs_.cols());
 
+  time_file.close();
   original_file.close();
   downsampled_file.close();
   optimized_states_file.close();

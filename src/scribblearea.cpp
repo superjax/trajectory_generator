@@ -121,9 +121,14 @@ void ScribbleArea::setAltitude(double alt)
   trajectory_altitude_ = alt;
 }
 
-void ScribbleArea::setVelocity(double vel)
+void ScribbleArea::setMaxVelocity(double vel)
 {
-  velocity_ = vel;
+  max_vel_ = vel;
+}
+
+void ScribbleArea::setMaxAccel(double acc)
+{
+  max_acc_ = acc;
 }
 
 void ScribbleArea::addPoint(const QPoint &point)
@@ -131,7 +136,7 @@ void ScribbleArea::addPoint(const QPoint &point)
   rough_trajectory_.push_back(Vector4d{((double)point.x()-midpixel_x_)/pixel_to_meters_,
                                        ((double)point.y()-midpixel_y_)/pixel_to_meters_,
                                        trajectory_altitude_,
-                                       velocity_});
+                                       max_vel_});
 }
 
 
@@ -252,7 +257,7 @@ void ScribbleArea::smoothTrajectory()
   double min_x = max_x - room_width_ + 2.0*wall_buffer;
   double max_y = room_height_ - (double)midpixel_y_ / pixel_to_meters_ - wall_buffer;
   double min_y = max_y - room_height_ + 2.0*wall_buffer;
-  smoother_->setBounds(max_x, min_x, max_y, min_y, velocity_, 0.5);
+  smoother_->setBounds(max_x, min_x, max_y, min_y, max_vel_, max_acc_);
 
   MatrixXd optimized_full_traj_ = smoother_->optimize();
 

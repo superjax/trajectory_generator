@@ -6,7 +6,7 @@ np.set_printoptions(linewidth=200)
 
 original = np.reshape(np.fromfile('../logs/original.bin', dtype=np.float64), (-1,4))
 downsampled = np.reshape(np.fromfile('../logs/downsampled.bin', dtype=np.float64), (-1,4))
-optimized = np.reshape(np.fromfile('../logs/optimized_states.bin', dtype=np.float64), (-1,14))
+optimized = np.reshape(np.fromfile('../logs/optimized_states.bin', dtype=np.float64), (-1,10))
 inputs = np.reshape(np.fromfile('../logs/optimized_inputs.bin', dtype=np.float64), (-1,4))
 dynamic_costs = np.reshape(np.fromfile('../logs/dynamics_costs.bin', dtype=np.float64), (-1,4))
 
@@ -61,4 +61,4 @@ for i in range(4):
     ax.plot(dynamic_costs[:, i], label=labels[i])
     ax.legend()
 
-plt.show()  
+plt.show()

@@ -96,6 +96,8 @@ private:
     QLabel *altitude_spin_box_label_;
     QDoubleSpinBox *velocity_spin_box_;
     QLabel *velocity_spin_box_label_;
+    QDoubleSpinBox *acc_spin_box_;
+    QLabel *acc_spin_box_label_;
 
     QAction *open_act_;
     QList<QAction *> save_as_acts_;

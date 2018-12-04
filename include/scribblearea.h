@@ -86,7 +86,8 @@ public:
 
 public slots:
     void setAltitude(double alt);
-    void setVelocity(double vel);
+    void setMaxVelocity(double vel);
+    void setMaxAccel(double acc);
     void clearImage();
     void print();
 
@@ -114,7 +115,8 @@ private:
     QPoint last_point_;
     QPoint first_point_;
     double trajectory_altitude_;
-    double velocity_;
+    double max_vel_;
+    double max_acc_;
 
     double pixel_to_meters_;
     int midpixel_x_;

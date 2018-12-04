@@ -72,15 +72,26 @@ MainWindow::MainWindow()
     control_layout_->addWidget(altitude_spin_box_);
 
     velocity_spin_box_ = new QDoubleSpinBox();
-    connect(velocity_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setVelocity(double)));
+    connect(velocity_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setMaxVelocity(double)));
     velocity_spin_box_->setSingleStep(0.1);
-    velocity_spin_box_->setMaximum(3.0);
+    velocity_spin_box_->setMaximum(20.0);
     velocity_spin_box_->setMinimum(0.1);
     velocity_spin_box_->setValue(1.0);
     velocity_spin_box_label_ = new QLabel();
-    velocity_spin_box_label_->setText("velocity (m/s):");
+    velocity_spin_box_label_->setText("max velocity (m/s):");
     control_layout_->addWidget(velocity_spin_box_label_);
     control_layout_->addWidget(velocity_spin_box_);
+
+    acc_spin_box_ = new QDoubleSpinBox();
+    connect(acc_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setMaxAccel(double)));
+    acc_spin_box_->setSingleStep(0.1);
+    acc_spin_box_->setMaximum(20.0);
+    acc_spin_box_->setMinimum(0.1);
+    acc_spin_box_->setValue(1.0);
+    acc_spin_box_label_ = new QLabel();
+    acc_spin_box_label_->setText("max accel (m/s^2):");
+    control_layout_->addWidget(acc_spin_box_label_);
+    control_layout_->addWidget(acc_spin_box_);
 
     main_layout_->addLayout(control_layout_);
 
