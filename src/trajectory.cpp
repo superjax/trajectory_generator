@@ -45,26 +45,28 @@ const MatrixXd& TrajectorySmoother::optimize()
   downSample();
 
   mav_trajectory_generation::Vertex::Vector vertices;
-  const int dimension = 3;
+  const int dim = 3;
   const int derivative_to_optimize = mav_trajectory_generation::derivative_order::SNAP;
-  mav_trajectory_generation::Vertex start(dimension);
-  mav_trajectory_generation::Vertex middle(dimension);
-  mav_trajectory_generation::Vertex end(dimension);
 
-  start.makeStartOrEnd(Eigen::Vector3d{0, 0, 1}, derivative_to_optimize);
-  vertices.push_back(start);
+  for (int i = 0; i < downsampled_traj_.size(); i++)
+  {
+    mav_trajectory_generation::Vertex vertex(dim);
+    Vector3d desired_pos = downsampled_traj_[i].topRows<3>();
+    if (i == 0)
+      vertex.makeStartOrEnd(desired_pos, derivative_to_optimize);
+    else
+      vertex.addConstraint(mav_trajectory_generation::derivative_order::POSITION, desired_pos);
 
-  middle.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d{1, 2, 3});
-  vertices.push_back(middle);
-
-  end.makeStartOrEnd(Eigen::Vector3d(2, 1, 5), derivative_to_optimize);
-  vertices.push_back(end);
+    vertices.push_back(vertex);
+  }
+  mav_trajectory_generation::Vertex vertex(dim);
+  vertex.makeStartOrEnd(downsampled_traj_[0].topRows<3>(), derivative_to_optimize);
+  vertices.push_back(vertex);
 
   std::vector<double> segment_times;
   const double v_max = 2.0;
   const double a_max = 2.0;
   segment_times = mav_trajectory_generation::estimateSegmentTimes(vertices, v_max, a_max);
-
 
   mav_trajectory_generation::NonlinearOptimizationParameters parameters;
   parameters.max_iterations = 1000;
@@ -75,7 +77,7 @@ const MatrixXd& TrajectorySmoother::optimize()
   parameters.inequality_constraint_tolerance = 0.1;
 
   const int N = 10;
-  mav_trajectory_generation::PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
+  mav_trajectory_generation::PolynomialOptimizationNonLinear<N> opt(dim, parameters);
   opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
   opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::VELOCITY, v_max);
   opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::ACCELERATION, a_max);
