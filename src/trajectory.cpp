@@ -2,26 +2,14 @@
 
 #include "trajectory.h"
 
+#include <mav_trajectory_generation/polynomial_optimization_nonlinear.h>
+#include <mav_trajectory_generation/polynomial_optimization_linear.h>
+
 TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double dt_node, int steps_per_node) :
   rough_traj_(vec),
   dt_node_(dt_node),
   steps_per_node_(steps_per_node)
-{
-  hover_throttle_ = 0.468;
-  pos_weight_.setConstant(1.0);
-  vel_weight_ = 1.0;
-  input_weight_ << 1.0, 1.0, 1.0, 1.0;
-  state_weight_ << 10000.0, 10000.0, 10000.0,
-                   10000.0, 10000.0, 10000.0,
-                   10000.0, 10000.0, 10000.0;
-
-  tau_wxy_ = 0.1904;
-  tau_wz_ = 0.2164;
-  tau_F_ = 0.2164;
-  max_wxy_ = 6.0;
-  max_wz_ = 0.25;
-  max_F_ = 1.0/hover_throttle_;
-}
+{}
 
 
 void TrajectorySmoother::downSample()
@@ -56,143 +44,71 @@ const MatrixXd& TrajectorySmoother::optimize()
 {
   downSample();
 
-  if (problem_)
-    delete problem_;
-  problem_ = new ceres::Problem;
+  mav_trajectory_generation::Vertex::Vector vertices;
+  const int dimension = 3;
+  const int derivative_to_optimize = mav_trajectory_generation::derivative_order::SNAP;
+  mav_trajectory_generation::Vertex start(dimension);
+  mav_trajectory_generation::Vertex middle(dimension);
+  mav_trajectory_generation::Vertex end(dimension);
 
-  initializeTrajectory();
-  buildOptimizationGraph();
-  runOptimization();
-  log();
+  start.makeStartOrEnd(Eigen::Vector3d{0, 0, 1}, derivative_to_optimize);
+  vertices.push_back(start);
 
+  middle.addConstraint(mav_trajectory_generation::derivative_order::POSITION, Eigen::Vector3d{1, 2, 3});
+  vertices.push_back(middle);
+
+  end.makeStartOrEnd(Eigen::Vector3d(2, 1, 5), derivative_to_optimize);
+  vertices.push_back(end);
+
+  std::vector<double> segment_times;
+  const double v_max = 2.0;
+  const double a_max = 2.0;
+  segment_times = mav_trajectory_generation::estimateSegmentTimes(vertices, v_max, a_max);
+
+
+  mav_trajectory_generation::NonlinearOptimizationParameters parameters;
+  parameters.max_iterations = 1000;
+  parameters.f_rel = 0.05;
+  parameters.x_rel = 0.1;
+  parameters.time_penalty = 500.0;
+  parameters.initial_stepsize_rel = 0.1;
+  parameters.inequality_constraint_tolerance = 0.1;
+
+  const int N = 10;
+  mav_trajectory_generation::PolynomialOptimizationNonLinear<N> opt(dimension, parameters);
+  opt.setupFromVertices(vertices, segment_times, derivative_to_optimize);
+  opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::VELOCITY, v_max);
+  opt.addMaximumMagnitudeConstraint(mav_trajectory_generation::derivative_order::ACCELERATION, a_max);
+  opt.optimize();
+
+  mav_trajectory_generation::Segment::Vector segments;
+  opt.getPolynomialOptimizationRef().getSegments(&segments);
+
+
+  MatrixXd optimized_traj_states_;
   return optimized_traj_states_;
-}
-
-void TrajectorySmoother::runOptimization()
-{
-  ceres::Solver::Options options;
-  options.max_num_iterations = 1000;
-  options.num_threads = 4;
-  options.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-  options.minimizer_progress_to_stdout = true;
-  ceres::Solver::Summary summary;
-
-  ceres::Solve(options, problem_, &summary);
-  std::cout << summary.FullReport() << std::endl;
-}
-
-void TrajectorySmoother::buildOptimizationGraph()
-{
-  for (int n = 0; n < downsampled_traj_.size(); n++)
-  {
-    addPositionCost(n, n*steps_per_node_);
-    for (int i = 1; i < steps_per_node_; i++)
-    {
-      int from_id = n*steps_per_node_ + i - 1;
-      int to_id = n*steps_per_node_ + i;
-      addDynamicsCost(from_id, to_id);
-    }
-  }
-//  addDynamicsCost(steps_per_node_*downsampled_traj_.size()-1, 0);
-}
-
-void TrajectorySmoother::initializeTrajectory()
-{
-  int num_states = downsampled_traj_.size() * steps_per_node_;
-  optimized_traj_states_.setZero(14, num_states);
-  optimized_traj_inputs_.setZero(4, num_states);
-
-  optimized_traj_states_.row(3).setConstant(1.0);
-  optimized_traj_states_.row(12).setConstant(hover_throttle_);
-  optimized_traj_inputs_.row(3).setConstant(hover_throttle_);
-}
-
-
-void TrajectorySmoother::createParameterBlocks()
-{
-  for (int n = 0; n < downsampled_traj_.size(); n++)
-  {
-    for (int i = 0; i < steps_per_node_; i++)
-    {
-      int id = i + n*steps_per_node_;
-      problem_->AddParameterBlock(optimized_traj_states_.data() + (id*14), 14, new NodeLocalParam);
-      problem_->AddParameterBlock(optimized_traj_inputs_.data() + (id*4), 4);
-
-      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 0, max_wxy_);
-      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 1, max_wxy_);
-      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 2, max_wz_);
-      problem_->SetParameterUpperBound(optimized_traj_inputs_.data(), 3, max_F_);
-
-      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 0, -max_wxy_);
-      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 1, -max_wxy_);
-      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 2, -max_wz_);
-      problem_->SetParameterLowerBound(optimized_traj_inputs_.data(), 3, 0.0);
-    }
-  }
 }
 
 void TrajectorySmoother::log() const
 {
-  ofstream original_file("../logs/original.bin");
-  ofstream downsampled_file("../logs/downsampled.bin");
-  ofstream optimized_states_file("../logs/optimized_states.bin");
-  ofstream optimized_inputs_file("../logs/optimized_inputs.bin");
-  ofstream dynamics_costs_file("../logs/dynamics_costs.bin");
+//  ofstream original_file("../logs/original.bin");
+//  ofstream downsampled_file("../logs/downsampled.bin");
+//  ofstream optimized_states_file("../logs/optimized_states.bin");
+//  ofstream optimized_inputs_file("../logs/optimized_inputs.bin");
+//  ofstream dynamics_costs_file("../logs/dynamics_costs.bin");
 
-  MatrixXd dynamic_costs(17, optimized_traj_states_.size());
-  for (int i = 0; i < dynamics_constraints_.size(); i++)
-  {
-    (*dynamics_constraints_[i])(optimized_traj_states_.data() + (i*14),
-                                optimized_traj_states_.data() + ((i+1)*14),
-                                optimized_traj_states_.data() + (i*4),
-                                dynamic_costs.data() + (i*4));
-  }
+//  MatrixXd dynamic_costs(17, optimized_traj_states_.size());
+//  for (int i = 0; i < dynamics_constraints_.size(); i++)
+//  {
+//    (*dynamics_constraints_[i])(optimized_traj_states_.data() + (i*14),
+//                                optimized_traj_states_.data() + ((i+1)*14),
+//                                optimized_traj_states_.data() + (i*4),
+//                                dynamic_costs.data() + (i*4));
+//  }
 
-  dynamics_costs_file.write((char*)dynamic_costs.data(), sizeof(double)*dynamic_costs.rows()*dynamic_costs.cols());
-  original_file.write((char*)rough_traj_.data(), sizeof(double) * 4 * rough_traj_.size());
-  downsampled_file.write((char*)downsampled_traj_.data(), sizeof(double)*4*downsampled_traj_.size());
-  optimized_states_file.write((char*)optimized_traj_states_.data(), sizeof(double)*optimized_traj_states_.rows()*optimized_traj_states_.cols());
-  optimized_inputs_file.write((char*)optimized_traj_inputs_.data(), sizeof(double)*optimized_traj_inputs_.rows()*optimized_traj_inputs_.cols());
-}
-
-
-void TrajectorySmoother::addDynamicsCost(int from_id, int to_id)
-{
-  double dynamics_dt = dt_node_ / (double)(steps_per_node_);
-  dynamics_constraints_.push_back(new DynamicsCostFunction(dynamics_dt, drag_term_, hover_throttle_, state_weight_, input_weight_,
-                                                           tau_wxy_, tau_wz_, tau_F_));
-  problem_->AddResidualBlock(new DynamicsFactor(*(dynamics_constraints_.end()-1)),
-                             NULL,
-                             optimized_traj_states_.data() + (from_id * 14),
-                             optimized_traj_states_.data() + (to_id * 14),
-                             optimized_traj_inputs_.data() + (from_id * 4));
-}
-
-
-void TrajectorySmoother::addPositionCost(int downsampled_id, int optimized_id)
-{
-  Vector3d desired_pos = downsampled_traj_[downsampled_id].segment<3>(0);
-  double desired_vel = downsampled_traj_[downsampled_id](3);
-
-  Vector3d pos = downsampled_traj_[downsampled_id].segment<3>(0);
-  Vector3d vel;
-  if (downsampled_id < downsampled_traj_.size() - 1)
-     vel = downsampled_traj_[downsampled_id+1].segment<3>(0) - pos;
-  else
-    vel = downsampled_traj_[0].segment<3>(0) - pos;
-  vel = vel / vel.norm() * desired_vel;
-
-  Quatd q = Quatd::from_two_unit_vectors(vel/vel.norm(), e_z);
-  q = q + 0.05*(Quatd::Identity() - q);
-
-  for (int i = 0; i < steps_per_node_; i++)
-  {
-    optimized_traj_states_.block<3,1>(0, optimized_id+i) = pos;
-    optimized_traj_states_.block<4,1>(3, optimized_id+i) = q.arr_;
-    optimized_traj_states_.block<3,1>(7, optimized_id+i) = vel;
-  }
-  position_constraints_.push_back(new PositionConstraintCostFunction(desired_pos, desired_vel, pos_weight_, vel_weight_));
-  problem_->AddResidualBlock(new ConstraintFactor(*(position_constraints_.end()-1)),
-                             NULL,
-                             optimized_traj_states_.data() + (optimized_id*14));
+//  dynamics_costs_file.write((char*)dynamic_costs.data(), sizeof(double)*dynamic_costs.rows()*dynamic_costs.cols());
+//  original_file.write((char*)rough_traj_.data(), sizeof(double) * 4 * rough_traj_.size());
+//  downsampled_file.write((char*)downsampled_traj_.data(), sizeof(double)*4*downsampled_traj_.size());
+//  optimized_states_file.write((char*)optimized_traj_states_.data(), sizeof(double)*optimized_traj_states_.rows()*optimized_traj_states_.cols());
+//  optimized_inputs_file.write((char*)optimized_traj_inputs_.data(), sizeof(double)*optimized_traj_inputs_.rows()*optimized_traj_inputs_.cols());
 }

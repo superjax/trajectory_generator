@@ -1,3 +1,6 @@
 [submodule "lib/geometry"]
 	path = lib/geometry
 	url = git@github.com:superjax/geometry
+[submodule "lib/mav_trajectory_generation"]
+	path = lib/mav_trajectory_generation
+	url = https://github.com/superjax/mav_trajectory_generation.git
