@@ -53,9 +53,9 @@
 #include "mainwindow.h"
 #include "scribblearea.h"
 
-MainWindow::MainWindow()
+MainWindow::MainWindow(int argc, char **argv)
 {
-    scribble_area_ = new ScribbleArea(this);
+    scribble_area_ = new ScribbleArea(argc, argv, this);
     main_layout_ = new QVBoxLayout();
     main_layout_->addWidget(scribble_area_);
 

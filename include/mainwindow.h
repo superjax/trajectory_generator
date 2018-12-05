@@ -68,7 +68,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow();
+    MainWindow(int argc, char** argv);
 
 protected:
     void closeEvent(QCloseEvent *event) override;

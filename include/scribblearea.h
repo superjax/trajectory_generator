@@ -61,6 +61,7 @@
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
 #include "trajectory.h"
+#include "trajopt_ros.h"
 
 using namespace Eigen;
 using namespace std;
@@ -74,7 +75,9 @@ class ScribbleArea : public QWidget
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    ScribbleArea(QWidget *parent = 0);
+    ScribbleArea(int argc, char** argv, QWidget *parent = 0);
+    ~ScribbleArea();
+    void initROS(int argc, char** argv);
 
 //    bool openImage(const QString &fileName);
 //    bool saveImage(const QString &fileName, const char *fileFormat);
@@ -97,10 +100,12 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    void timerEvent(QTimerEvent * ev) override;
 
 private:
     void drawBackground();
-    void addPoint(const QPoint& point);
+    void addPoint(const Vector3d &point);
+    void addPoint(const QPoint &point);
     void drawLineTo(const QPoint &endPoint, QColor& pen_color);
     void resizeImage(QImage *image_, const QSize &newSize);
     void smoothTrajectory();
@@ -128,6 +133,8 @@ private:
     trajVec smooth_traj_;
 
     TrajectorySmoother* smoother_ = nullptr;
+    TrajOptROS* ros_node_;
+    int ros_node_timer_id_;
 };
 
 #endif

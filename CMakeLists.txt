@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.4)
-project(TrajectoryGenerator)
+project(trajectory_generator)
 
 find_package(Qt5Widgets)
 find_package(Qt5PrintSupport)
@@ -7,6 +7,24 @@ find_package(Qt5Gui REQUIRED)
 find_package(Qt5OpenGL REQUIRED)
 find_package(GTest REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    rosflight_msgs
+    nav_msgs
+    geometry_msgs
+    message_generation)
+
+add_message_files(
+  DIRECTORY msg
+  FILES
+  TrajectoryCommand.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
+  std_msgs
+)
 
 if (${GTEST_NOTFOUND})
     add_subdirectory(lib/googletest)
@@ -25,17 +43,8 @@ set(CMAKE_AUTORCC ON)
 include_directories(include
     ${EIGEN3_INCLUDE_DIRS}
     lib/geometry/include
-    lib/mav_trajectory_generation/mav_trajectory_generation/include)
-
-add_library(TrajOpt
-    src/trajectory.cpp
-    include/trajectory.h)
-target_link_libraries(TrajOpt
-    mav_trajectory_generation
-    Qt5::Widgets
-    Qt5::PrintSupport
-    Qt5::OpenGL
-    Qt5::Gui)
+    lib/mav_trajectory_generation/mav_trajectory_generation/include
+    ${catkin_INCLUDE_DIRS})
 
 add_executable(TrajectoryGenerator
   src/main.cpp
@@ -43,27 +52,33 @@ add_executable(TrajectoryGenerator
   src/scribblearea.cpp
   include/mainwindow.h
   include/scribblearea.h
+
+  src/trajectory.cpp
+  include/trajectory.h
+
+  src/trajopt_ros.cpp
+  include/trajopt_ros.h
 )
 target_link_libraries(TrajectoryGenerator
     Qt5::Widgets
     Qt5::PrintSupport
     Qt5::OpenGL
     Qt5::Gui
-    TrajOpt
+    mav_trajectory_generation
+    ${catkin_LIBRARIES}
 )
+add_dependencies(TrajectoryGenerator ${catkin_EXPORTED_TARGETS})
 
-add_executable(TrajOpt_Test src/trajopt_test.cpp)
-target_link_libraries(TrajOpt_Test
-    gtest
-    gtest_main
-    ${GTEST_LIBRARIES}
-    TrajOpt
-    Qt5::Widgets
-    Qt5::PrintSupport
-    Qt5::OpenGL
-    Qt5::Gui
-    ${CERES_LIBRARIES}
-    pthread
-)
-
-
+#add_executable(TrajOpt_Test src/trajopt_test.cpp)
+#target_link_libraries(TrajOpt_Test
+#    gtest
+#    gtest_main
+#    ${GTEST_LIBRARIES}
+#    TrajOpt
+#    Qt5::Widgets
+#    Qt5::PrintSupport
+#    Qt5::OpenGL
+#    Qt5::Gui
+#    ${CERES_LIBRARIES}
+#    pthread
+#)

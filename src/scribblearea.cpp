@@ -1,4 +1,4 @@
-/****************************************************************************
+﻿/****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
@@ -51,6 +51,7 @@
 #include <QtWidgets>
 #include <QPrinter>
 #include <QPrintDialog>
+#include <QTimer>
 
 #include "scribblearea.h"
 
@@ -60,7 +61,7 @@ using namespace std;
 const double ScribbleArea::room_height_ = 10.21;
 const double ScribbleArea::room_width_ = 7.16;
 
-ScribbleArea::ScribbleArea(QWidget *parent)
+ScribbleArea::ScribbleArea(int argc, char **argv, QWidget *parent)
   : QWidget(parent)
 {
   setAttribute(Qt::WA_StaticContents);
@@ -71,11 +72,32 @@ ScribbleArea::ScribbleArea(QWidget *parent)
   empty_ = true;
   rough_trajectory_.clear();
   trajectory_altitude_ = 1.0;
+  initROS(argc, argv);
+}
+
+ScribbleArea::~ScribbleArea()
+{
+  if(ros_node_)
+    delete ros_node_;
+  if (smoother_)
+    delete smoother_;
+}
+
+void ScribbleArea::timerEvent(QTimerEvent * ev)
+{
+    if (ev->timerId() == ros_node_timer_id_)
+        ros::spinOnce();
+}
+
+void ScribbleArea::initROS(int argc, char **argv)
+{
+  ros::init(argc, argv, "mocap_controller");
+  ros_node_ = new TrajOptROS();
+  ros_node_timer_id_ = startTimer(1);
 }
 
 
 void ScribbleArea::setPenColor(const QColor &newColor)
-
 {
   pen_color_ = newColor;
 }
@@ -131,6 +153,14 @@ void ScribbleArea::setMaxAccel(double acc)
   max_acc_ = acc;
 }
 
+void ScribbleArea::addPoint(const Vector3d &point)
+{
+  rough_trajectory_.push_back(Vector4d{point.x(),
+                                       point.y(),
+                                       point.z(),
+                                       max_vel_});
+}
+
 void ScribbleArea::addPoint(const QPoint &point)
 {
   rough_trajectory_.push_back(Vector4d{((double)point.x()-midpixel_x_)/pixel_to_meters_,
@@ -145,6 +175,7 @@ void ScribbleArea::mousePressEvent(QMouseEvent *event)
   if (event->button() == Qt::LeftButton)
   {
     clearImage();
+    addPoint(ros_node_->getCurrentPosition());
     addPoint(event->pos());
     first_point_ = event->pos();
     last_point_ = event->pos();
@@ -251,7 +282,7 @@ void ScribbleArea::print()
 
 void ScribbleArea::smoothTrajectory()
 {
-  smoother_ = new TrajectorySmoother(rough_trajectory_, 0.5, 100);
+  smoother_ = new TrajectorySmoother(rough_trajectory_, 0.3);
   double wall_buffer = 1.0;
   double max_x = room_width_ - (double)midpixel_x_ / pixel_to_meters_ - wall_buffer;
   double min_x = max_x - room_width_ + 2.0*wall_buffer;
@@ -275,13 +306,14 @@ void ScribbleArea::plotSmoothTrajectory()
   QColor downsampled_color(Qt::yellow);
   last_point_ = QPoint(smooth_traj_[0](0)*pixel_to_meters_ + midpixel_x_,
       smooth_traj_[0](1)*pixel_to_meters_ + midpixel_y_);
-  first_point_ = last_point_;
 
   for (int i = 1; i < smooth_traj_.size(); i++)
   {
       QPoint new_point(smooth_traj_[i](0)*pixel_to_meters_ + midpixel_x_,
           smooth_traj_[i](1)*pixel_to_meters_ + midpixel_y_);
       drawLineTo(new_point, downsampled_color);
+      if (i == 1);
+        first_point_ = last_point_;
   }
   drawLineTo(first_point_, downsampled_color);
   update();

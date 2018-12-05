@@ -9,10 +9,9 @@
 #include "mav_trajectory_generation/trajectory.h"
 
 
-TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double dt_node, int steps_per_node) :
+TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double delta_pos) :
   rough_traj_(vec),
-  dt_node_(dt_node),
-  steps_per_node_(steps_per_node)
+  delta_pos_(delta_pos)
 {}
 
 
@@ -49,6 +48,9 @@ bool TrajectorySmoother::solveTrajectoryOpt()
     vertex.addConstraint(mav_trajectory_generation::derivative_order::POSITION, desired_pos);
     vertices.push_back(vertex);
   }
+  mav_trajectory_generation::Vertex vertex(dim);
+  vertex.addConstraint(mav_trajectory_generation::derivative_order::POSITION, downsampled_traj_[1].topRows<3>());
+  vertices.push_back(vertex);
 
   std::vector<double> segment_times;
   try
@@ -65,9 +67,9 @@ bool TrajectorySmoother::solveTrajectoryOpt()
   parameters.max_iterations = 1000;
   parameters.f_rel = 0.05;
   parameters.x_rel = 0.1;
-  parameters.time_penalty = 500.0;
+  parameters.time_penalty = 50000.0;
   parameters.initial_stepsize_rel = 0.1;
-  parameters.inequality_constraint_tolerance = 0.1;
+  parameters.inequality_constraint_tolerance = 0.3;
 
   mav_trajectory_generation::PolynomialOptimizationNonLinear<10> opt(dim, parameters);
   try
@@ -98,9 +100,10 @@ void TrajectorySmoother::calcStatesAndInputsFromTrajectory()
   std::vector<Eigen::VectorXd> p;
   std::vector<Eigen::VectorXd> pdot;
   std::vector<Eigen::VectorXd> pddot;
-  trajectory_.evaluateRange(t_start, t_end, dt_node_, mav_trajectory_generation::derivative_order::POSITION, &p, &optimized_traj_t_);
-  trajectory_.evaluateRange(t_start, t_end, dt_node_, mav_trajectory_generation::derivative_order::VELOCITY, &pdot, &optimized_traj_t_);
-  trajectory_.evaluateRange(t_start, t_end, dt_node_, mav_trajectory_generation::derivative_order::ACCELERATION, &pddot, &optimized_traj_t_);
+  double dt = 0.2;
+  trajectory_.evaluateRange(t_start, t_end, dt, mav_trajectory_generation::derivative_order::POSITION, &p, &optimized_traj_t_);
+  trajectory_.evaluateRange(t_start, t_end, dt, mav_trajectory_generation::derivative_order::VELOCITY, &pdot, &optimized_traj_t_);
+  trajectory_.evaluateRange(t_start, t_end, dt, mav_trajectory_generation::derivative_order::ACCELERATION, &pddot, &optimized_traj_t_);
 
 
   optimized_traj_states_.resize(10, optimized_traj_t_.size()); // [ P Q V ]
@@ -112,7 +115,7 @@ void TrajectorySmoother::calcStatesAndInputsFromTrajectory()
   {
     optimized_traj_states_.block<3,1>(0, i) = p[i];
 
-    Vector3d acc_desired_I = pddot[i] + gravity;
+    Vector3d acc_desired_I = pddot[i] + gravity + pdot[i]*drag_term_;
     double acc_mag = acc_desired_I.norm();
     Vector3d acc_desired_direction = acc_desired_I / acc_mag;
     quat::Quatd q_I_b = quat::Quatd::from_two_unit_vectors(acc_desired_direction, e_z);
@@ -133,8 +136,7 @@ void TrajectorySmoother::downSample()
   downsampled_traj_.push_back(sat(rough_traj_[0]));
   while (j < rough_traj_.size())
   {
-    double dist = dt_node_*rough_traj_[i](3);
-    if ((rough_traj_[i].topRows(3) - rough_traj_[j].topRows(3)).norm() >= dist)
+    if ((rough_traj_[i].topRows(3) - rough_traj_[j].topRows(3)).norm() >= delta_pos_)
     {
       downsampled_traj_.push_back(sat(rough_traj_[j]));
       i = j;
