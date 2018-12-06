@@ -25,7 +25,7 @@ void TrajOptROS::statusCallback(const rosflight_msgs::StatusConstPtr &status)
   armed_ = status->armed;
 }
 
-void TrajOptROS::pubishCommand(const Matrix<double, 10, 1> &x_c, Matrix<double, 4, 1> &u_c)
+void TrajOptROS::publishCommand(const Matrix<double, 10, 1> &x_c, Matrix<double, 4, 1> &u_c)
 {
   if (!armed_)
     return;

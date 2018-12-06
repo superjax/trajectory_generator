@@ -9,9 +9,10 @@
 #include "mav_trajectory_generation/trajectory.h"
 
 
-TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double delta_pos) :
+TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double delta_pos, double sample_dt) :
   rough_traj_(vec),
-  delta_pos_(delta_pos)
+  delta_pos_(delta_pos),
+  sample_dt_(sample_dt)
 {}
 
 
@@ -100,10 +101,9 @@ void TrajectorySmoother::calcStatesAndInputsFromTrajectory()
   std::vector<Eigen::VectorXd> p;
   std::vector<Eigen::VectorXd> pdot;
   std::vector<Eigen::VectorXd> pddot;
-  double dt = 0.2;
-  trajectory_.evaluateRange(t_start, t_end, dt, mav_trajectory_generation::derivative_order::POSITION, &p, &optimized_traj_t_);
-  trajectory_.evaluateRange(t_start, t_end, dt, mav_trajectory_generation::derivative_order::VELOCITY, &pdot, &optimized_traj_t_);
-  trajectory_.evaluateRange(t_start, t_end, dt, mav_trajectory_generation::derivative_order::ACCELERATION, &pddot, &optimized_traj_t_);
+  trajectory_.evaluateRange(t_start, t_end, sample_dt_, mav_trajectory_generation::derivative_order::POSITION, &p, &optimized_traj_t_);
+  trajectory_.evaluateRange(t_start, t_end, sample_dt_, mav_trajectory_generation::derivative_order::VELOCITY, &pdot, &optimized_traj_t_);
+  trajectory_.evaluateRange(t_start, t_end, sample_dt_, mav_trajectory_generation::derivative_order::ACCELERATION, &pddot, &optimized_traj_t_);
 
 
   optimized_traj_states_.resize(10, optimized_traj_t_.size()); // [ P Q V ]
@@ -145,7 +145,7 @@ void TrajectorySmoother::downSample()
   }
 }
 
-const MatrixXd& TrajectorySmoother::optimize()
+const void TrajectorySmoother::optimize(MatrixXd& states, MatrixXd& inputs)
 {
   downSample();
   if (solveTrajectoryOpt())
@@ -157,7 +157,8 @@ const MatrixXd& TrajectorySmoother::optimize()
   {
     optimized_traj_states_.resize(0,0);
   }
-  return optimized_traj_states_;
+  states = optimized_traj_states_;
+  inputs = optimized_traj_inputs_;
 }
 
 void TrajectorySmoother::log() const

@@ -58,10 +58,12 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPushButton>
 
 class ScribbleArea;
 class QDoubleSpinBox;
 class QVBoxLayout;
+class QPushButton;
 
 class MainWindow : public QMainWindow
 {
@@ -89,15 +91,18 @@ private:
     QMenu *file_menu_;
     QMenu *option_menu_;
     QMenu *help_menu_;
-    QVBoxLayout *main_layout_;
+    QHBoxLayout *main_layout_;
 
-    QHBoxLayout *control_layout_;
+    QVBoxLayout *control_layout_;
     QDoubleSpinBox *altitude_spin_box_;
     QLabel *altitude_spin_box_label_;
     QDoubleSpinBox *velocity_spin_box_;
     QLabel *velocity_spin_box_label_;
     QDoubleSpinBox *acc_spin_box_;
     QLabel *acc_spin_box_label_;
+    QPushButton *fly_button_;
+    QPushButton *return_to_home_button_;
+    QPushButton *land_button_;
 
     QAction *open_act_;
     QList<QAction *> save_as_acts_;

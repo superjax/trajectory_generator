@@ -17,9 +17,9 @@ typedef vector<Vector4d, aligned_allocator<Vector4d>> trajVec;
 class TrajectorySmoother
 {
 public:
-  TrajectorySmoother(const trajVec& rough_traj, double delta_pos);
+  TrajectorySmoother(const trajVec& rough_traj, double delta_pos, double sample_dt);
   void setBounds(double max_x, double min_x, double max_y, double min_y, double max_v, double max_a);
-  const MatrixXd &optimize();
+  const void optimize(MatrixXd &states, MatrixXd &inputs);
 
 private:
   void downSample();
@@ -39,7 +39,7 @@ private:
   ceres::Problem* problem_ = nullptr;
 
   double delta_pos_;
-
+  double sample_dt_;
   double hover_throttle_ = 0.5;
   double drag_term_ = 0.2;
 

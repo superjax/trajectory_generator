@@ -93,6 +93,9 @@ public slots:
     void setMaxAccel(double acc);
     void clearImage();
     void print();
+    void handleFlyButton();
+    void handleRTHButton();
+    void handleLandButton();
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -110,6 +113,8 @@ private:
     void resizeImage(QImage *image_, const QSize &newSize);
     void smoothTrajectory();
     void plotSmoothTrajectory();
+
+    void publishCommand();
 
     bool modified_;
     bool scribbling_;
@@ -129,12 +134,20 @@ private:
     static const double room_width_;
     static const double room_height_;
 
+    double waypoint_distance_ = 0.3;
+    double sample_dt_ = 0.02;
+
     trajVec rough_trajectory_;
     trajVec smooth_traj_;
+    MatrixXd optimized_states_;
+    MatrixXd optimized_inputs_;
 
     TrajectorySmoother* smoother_ = nullptr;
     TrajOptROS* ros_node_;
     int ros_node_timer_id_;
+
+    int publish_command_timer_id_;
+    int cmd_idx_;
 };
 
 #endif

@@ -1,0 +1,38 @@
+<launch>
+
+  <!-- Simulation -->
+  <include file="$(find rosflight_sim)/launch/base.launch">
+    <arg name="mav_name" value="multirotor"/>
+    <!-- <arg name="world_file" value="$(find leo_sim)/worlds/light_sim.world"/> -->
+  </include>
+
+  <!-- FCU communication -->
+  <node name="rosflight_io" pkg="rosflight" type="rosflight_io" output="screen">
+    <param name="udp" value="true"/>
+  </node>
+
+  <!-- Load roscopter Parameters -->
+  <rosparam command="load" file="$(find roscopter_sim)/params/multirotor.yaml"/>
+
+  <!-- Estimator -->
+  <node name="ekf" pkg="roscopter" type="ekf_node" output="screen">
+    <rosparam command="load" file="$(find roscopter)/params/ekf_gains.yaml"/>
+    <rosparam command="load" file="$(find roscopter)/params/ekf_sim.yaml"/>
+    <remap from="imu" to="imu/data"/>
+    <remap from="truth/odom" to="multirotor/truth/NED"/>
+  </node>
+
+  <!-- RC -->
+  <node name="rc_joy" pkg="rosflight_utils" type="rc_joy">
+    <remap from="RC" to="multirotor/RC"/>
+  </node>
+
+  <!-- Controller -->
+<!--   <node name="lqr_controller" pkg="trajectory_generator" type="lqr">
+    <remap from="state" to="odom"/>
+  </node> -->
+
+  <!-- Trajectory Generator GUI -->
+  <!-- <node name="trajopt_gui" pkg="trajectory_generator" type="TrajectoryGenerator"/> -->
+
+</launch>

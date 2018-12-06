@@ -11,10 +11,11 @@ class TrajOptROS
 public:
   TrajOptROS();
 
+  bool isArmed() { return armed_; }
   void odomCallback(const nav_msgs::OdometryConstPtr& odom);
   void statusCallback(const rosflight_msgs::StatusConstPtr& status);
   const Vector3d& getCurrentPosition() const { return current_position_; }
-  void pubishCommand(const Matrix<double, 10, 1>& x_c, Matrix<double, 4,1>& u_c);
+  void publishCommand(const Matrix<double, 10, 1>& x_c, Matrix<double, 4,1>& u_c);
 
 private:
   ros::NodeHandle nh_;

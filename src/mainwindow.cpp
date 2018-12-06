@@ -56,10 +56,7 @@
 MainWindow::MainWindow(int argc, char **argv)
 {
     scribble_area_ = new ScribbleArea(argc, argv, this);
-    main_layout_ = new QVBoxLayout();
-    main_layout_->addWidget(scribble_area_);
 
-    control_layout_ = new QHBoxLayout();
     altitude_spin_box_ = new QDoubleSpinBox();
     connect(altitude_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setAltitude(double)));
     altitude_spin_box_->setSingleStep(0.1);
@@ -68,8 +65,6 @@ MainWindow::MainWindow(int argc, char **argv)
     altitude_spin_box_->setValue(1.0);
     altitude_spin_box_label_ = new QLabel();
     altitude_spin_box_label_->setText("altitude (m):");
-    control_layout_->addWidget(altitude_spin_box_label_);
-    control_layout_->addWidget(altitude_spin_box_);
 
     velocity_spin_box_ = new QDoubleSpinBox();
     connect(velocity_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setMaxVelocity(double)));
@@ -78,9 +73,7 @@ MainWindow::MainWindow(int argc, char **argv)
     velocity_spin_box_->setMinimum(0.1);
     velocity_spin_box_->setValue(1.0);
     velocity_spin_box_label_ = new QLabel();
-    velocity_spin_box_label_->setText("max velocity (m/s):");
-    control_layout_->addWidget(velocity_spin_box_label_);
-    control_layout_->addWidget(velocity_spin_box_);
+    velocity_spin_box_label_->setText("max vel (m/s):");
 
     acc_spin_box_ = new QDoubleSpinBox();
     connect(acc_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setMaxAccel(double)));
@@ -90,8 +83,43 @@ MainWindow::MainWindow(int argc, char **argv)
     acc_spin_box_->setValue(1.0);
     acc_spin_box_label_ = new QLabel();
     acc_spin_box_label_->setText("max accel (m/s^2):");
-    control_layout_->addWidget(acc_spin_box_label_);
-    control_layout_->addWidget(acc_spin_box_);
+
+
+    main_layout_ = new QHBoxLayout();
+    main_layout_->addWidget(scribble_area_);
+    main_layout_->setStretchFactor(scribble_area_, 1);
+    control_layout_ = new QVBoxLayout();
+
+    QHBoxLayout* alt = new QHBoxLayout();
+    alt->addWidget(altitude_spin_box_label_);
+    alt->addWidget(altitude_spin_box_);
+    control_layout_->addLayout(alt);
+
+    QHBoxLayout* vel = new QHBoxLayout();
+    vel->addWidget(velocity_spin_box_label_);
+    vel->addWidget(velocity_spin_box_);
+    control_layout_->addLayout(vel);
+
+    QHBoxLayout* acc = new QHBoxLayout();
+    acc->addWidget(acc_spin_box_label_);
+    acc->addWidget(acc_spin_box_);
+    control_layout_->addLayout(acc);
+
+    fly_button_ = new QPushButton();
+    fly_button_->setText("Fly");
+    connect(fly_button_, SIGNAL(released()), scribble_area_, SLOT(handleFlyButton()));
+    control_layout_->addWidget(fly_button_);
+
+    return_to_home_button_ = new QPushButton();
+    return_to_home_button_->setText("RTH");
+    connect(return_to_home_button_, SIGNAL(released()), scribble_area_, SLOT(handleRTHButton()));
+    control_layout_->addWidget(return_to_home_button_);
+
+    land_button_ = new QPushButton();
+    land_button_->setText("land");
+    connect(land_button_, SIGNAL(released()), scribble_area_, SLOT(handleLandButton()));
+    control_layout_->addWidget(land_button_);
+    control_layout_->addStretch(1);
 
     main_layout_->addLayout(control_layout_);
 
@@ -103,7 +131,7 @@ MainWindow::MainWindow(int argc, char **argv)
     createMenus();
 
     setWindowTitle(tr("TrajectoryGenerator"));
-    resize(650, 918);
+    resize(835, 918);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

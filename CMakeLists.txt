@@ -32,6 +32,7 @@ endif()
 
 add_subdirectory(lib/geometry)
 add_subdirectory(lib/mav_trajectory_generation/mav_trajectory_generation)
+add_subdirectory(lib/lin_alg_tools)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED 1)
@@ -44,7 +45,19 @@ include_directories(include
     ${EIGEN3_INCLUDE_DIRS}
     lib/geometry/include
     lib/mav_trajectory_generation/mav_trajectory_generation/include
+    lib/lin_alg_tools/include
     ${catkin_INCLUDE_DIRS})
+
+add_executable(lqr
+    src/lqr.cpp
+    include/lqr.h
+
+    src/lqr_ros.cpp
+    include/lqr_ros.h
+)
+target_link_libraries(lqr
+    lin_alg_tools
+    ${catkin_LIBRARIES})
 
 add_executable(TrajectoryGenerator
   src/main.cpp

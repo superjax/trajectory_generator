@@ -87,11 +87,13 @@ void ScribbleArea::timerEvent(QTimerEvent * ev)
 {
     if (ev->timerId() == ros_node_timer_id_)
         ros::spinOnce();
+    else if (ev->timerId() == publish_command_timer_id_)
+        publishCommand();
 }
 
 void ScribbleArea::initROS(int argc, char **argv)
 {
-  ros::init(argc, argv, "mocap_controller");
+  ros::init(argc, argv, "trajectory_generator");
   ros_node_ = new TrajOptROS();
   ros_node_timer_id_ = startTimer(1);
 }
@@ -282,7 +284,10 @@ void ScribbleArea::print()
 
 void ScribbleArea::smoothTrajectory()
 {
-  smoother_ = new TrajectorySmoother(rough_trajectory_, 0.3);
+  if (smoother_ != nullptr)
+    delete smoother_;
+
+  smoother_ = new TrajectorySmoother(rough_trajectory_, waypoint_distance_, sample_dt_);
   double wall_buffer = 1.0;
   double max_x = room_width_ - (double)midpixel_x_ / pixel_to_meters_ - wall_buffer;
   double min_x = max_x - room_width_ + 2.0*wall_buffer;
@@ -290,14 +295,46 @@ void ScribbleArea::smoothTrajectory()
   double min_y = max_y - room_height_ + 2.0*wall_buffer;
   smoother_->setBounds(max_x, min_x, max_y, min_y, max_vel_, max_acc_);
 
-  MatrixXd optimized_full_traj_ = smoother_->optimize();
+  smoother_->optimize(optimized_states_, optimized_inputs_);
 
-  smooth_traj_.resize(optimized_full_traj_.cols());
-  for (int i = 0; i < optimized_full_traj_.cols(); i++)
+  smooth_traj_.resize(optimized_states_.cols());
+  for (int i = 0; i < optimized_states_.cols(); i++)
   {
-    smooth_traj_[i].segment<3>(0) = optimized_full_traj_.block<3,1>(0, i);
+    smooth_traj_[i].segment<3>(0) = optimized_states_.block<3,1>(0, i);
     smooth_traj_[i](3) = 1.0;
   }
+}
+
+void ScribbleArea::publishCommand()
+{
+  Matrix<double, 10, 1> x_r = optimized_states_.block<10,1>(0, cmd_idx_);
+  Matrix<double, 4, 1> u_r = optimized_inputs_.block<4,1>(0, cmd_idx_);
+  ros_node_->publishCommand(x_r, u_r);
+
+  cmd_idx_++;
+  if (cmd_idx_ == optimized_states_.cols())
+    cmd_idx_ = 1;
+}
+
+void ScribbleArea::handleFlyButton()
+{
+  if (ros_node_->isArmed())
+  {
+    cmd_idx_ = 0;
+    publish_command_timer_id_ = startTimer(1000 * sample_dt_);
+  }
+}
+
+void ScribbleArea::handleRTHButton()
+{
+  if (smoother_ != nullptr)
+    delete smoother_;
+}
+
+void ScribbleArea::handleLandButton()
+{
+  if (smoother_ != nullptr)
+    delete smoother_;
 }
 
 
