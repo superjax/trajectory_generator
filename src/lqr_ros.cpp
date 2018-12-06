@@ -1,7 +1,9 @@
 #include "lqr_ros.h"
 
 
-LQR_ROS::LQR_ROS()
+LQR_ROS::LQR_ROS() :
+  nh_(),
+  private_nh_("~")
 {
   hover_throttle_ = 0.5;
   drag_term_ = 0.2;
@@ -11,6 +13,13 @@ LQR_ROS::LQR_ROS()
   cmd_sub_ = nh_.subscribe("trajectory_command", 1, &LQR_ROS::trajCommandCallback, this);
 
   command_pub_ = nh_.advertise<rosflight_msgs::Command>("command", 1);
+
+  Vector9d Qdiag;
+  Vector4d Rdiag;
+  importMatrixFromParamServer(private_nh_, Qdiag, "Qdiag");
+  importMatrixFromParamServer(private_nh_, Rdiag, "Rdiag");
+  lqr_.setQ(Qdiag.asDiagonal());
+  lqr_.setR(Rdiag.asDiagonal());
 }
 
 

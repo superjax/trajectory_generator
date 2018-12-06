@@ -12,7 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
     rosflight_msgs
     nav_msgs
     geometry_msgs
-    message_generation)
+    message_generation
+    roscopter)
 
 add_message_files(
   DIRECTORY msg

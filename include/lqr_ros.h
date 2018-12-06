@@ -3,6 +3,7 @@
 #include <rosflight_msgs/Status.h>
 #include <rosflight_msgs/Command.h>
 #include <trajectory_generator/TrajectoryCommand.h>
+#include "roscopter/eigen_helpers.h"
 
 
 #include "lqr.h"
