@@ -71,7 +71,7 @@ ScribbleArea::ScribbleArea(int argc, char **argv, QWidget *parent)
   pen_color_ = Qt::cyan;
   empty_ = true;
   rough_trajectory_.clear();
-  trajectory_altitude_ = 1.0;
+  trajectory_altitude_ = -1.0;
   initROS(argc, argv);
 }
 
@@ -142,7 +142,7 @@ void ScribbleArea::clearImage()
 
 void ScribbleArea::setAltitude(double alt)
 {
-  trajectory_altitude_ = alt;
+  trajectory_altitude_ = -alt;
 }
 
 void ScribbleArea::setMaxVelocity(double vel)

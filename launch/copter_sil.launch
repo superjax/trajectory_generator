@@ -28,7 +28,7 @@
   </node>
 
   <!-- Controller -->
-  <node name="lqr" pkg="trajectory_generator" type="lqr">
+  <node name="lqr" pkg="trajectory_generator" type="lqr" output="screen">
     <remap from="state" to="odom"/>
   </node>
 

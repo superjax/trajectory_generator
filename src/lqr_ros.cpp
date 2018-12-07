@@ -18,8 +18,10 @@ LQR_ROS::LQR_ROS() :
   Vector4d Rdiag;
   importMatrixFromParamServer(private_nh_, Qdiag, "Qdiag");
   importMatrixFromParamServer(private_nh_, Rdiag, "Rdiag");
-  lqr_.setQ(Qdiag.asDiagonal());
-  lqr_.setR(Rdiag.asDiagonal());
+  Matrix9d Q = Qdiag.asDiagonal();
+  Matrix4d R = Rdiag.asDiagonal();
+  lqr_.setQ(Q);
+  lqr_.setR(R);
 }
 
 
@@ -78,7 +80,6 @@ void LQR_ROS::computeCommand()
   cmd.F = u_(LQR::F);
   command_pub_.publish(cmd);
 }
-
 
 void LQR_ROS::statusCallback(const rosflight_msgs::StatusConstPtr& status)
 {

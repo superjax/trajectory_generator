@@ -31,8 +31,8 @@ public:
   void setDragTerm(double drag_term) { drag_term_ = drag_term; }
   void setHoverThrottle(double hover_throttle) { hover_throttle_ = hover_throttle; }
 
-  void setQ(Matrix9d Q) { Q_ = Q; }
-  void setR(Matrix4d R) { R_ = R; Rinv_ = R.inverse();}
+  inline void setQ(Matrix9d& Q) { Q_ = Q; }
+  inline void setR(Matrix4d& R) { R_ = R; Rinv_ = R.inverse();}
 
   void boxminus(const Vector10d& x1, const Vector10d& x2, Vector9d& dx) const;
   void calcJacobian(const Vector10d& x);

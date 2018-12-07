@@ -3,6 +3,7 @@
 #include <rosflight_msgs/Status.h>
 #include <rosflight_msgs/Command.h>
 #include <trajectory_generator/TrajectoryCommand.h>
+
 #include "roscopter/eigen_helpers.h"
 
 
@@ -28,6 +29,7 @@ private:
   ros::Subscriber status_sub_;
   ros::Subscriber cmd_sub_;
   ros::Publisher command_pub_;
+
 
   LQR lqr_;
   double hover_throttle_;
