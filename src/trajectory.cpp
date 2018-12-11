@@ -26,13 +26,12 @@ void TrajectorySmoother::setBounds(double max_x, double min_x, double max_y, dou
   max_a_ = max_a;
 }
 
-Vector4d TrajectorySmoother::sat(const Vector4d& v)
+Vector3d TrajectorySmoother::sat(const Vector3d& v)
 {
-  Vector4d out;
+  Vector3d out;
   out.x() = (v.x() > max_x_) ? max_x_ : (v.x() < min_x_) ? min_x_ : v.x();
   out.y() = (v.y() > max_y_) ? max_y_ : (v.y() < min_y_) ? min_y_ : v.y();
   out.z() = v.z();
-  out(3) = v(3);
   return out;
 }
 
@@ -134,12 +133,18 @@ void TrajectorySmoother::downSample()
   int j = 1;
   downsampled_traj_.clear();
   downsampled_traj_.push_back(sat(rough_traj_[0]));
-  while (j < rough_traj_.size())
+
+  Vector3d dir = rough_traj_[j+1] - rough_traj_[j];
+  dir /= dir.norm();
+  while (j < rough_traj_.size()-1)
   {
-    if ((rough_traj_[i].topRows(3) - rough_traj_[j].topRows(3)).norm() >= delta_pos_)
+    Vector3d new_dir = rough_traj_[j+1] - rough_traj_[j];
+    new_dir /= new_dir.norm();
+
+    if (std::acos(new_dir.transpose() * dir) > M_PI * 30.0 / 180.0)
     {
       downsampled_traj_.push_back(sat(rough_traj_[j]));
-      i = j;
+      dir = new_dir;
     }
     j++;
   }

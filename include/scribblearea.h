@@ -62,11 +62,12 @@
 #include <Eigen/StdVector>
 #include "trajectory.h"
 #include "trajopt_ros.h"
+#include "lqr.h"
 
 using namespace Eigen;
 using namespace std;
 
-typedef vector<Vector4d, aligned_allocator<Vector4d>> trajVec;
+typedef vector<Vector3d, aligned_allocator<Vector3d>> trajVec;
 class TrajectorySmoother;
 
 class ScribbleArea : public QWidget
@@ -95,7 +96,6 @@ public slots:
     void print();
     void handleFlyButton();
     void handleRTHButton();
-    void handleLandButton();
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -114,6 +114,8 @@ private:
     void smoothTrajectory();
     void plotSmoothTrajectory();
 
+    void updateCommand();
+    void updateState();
     void publishCommand();
 
     bool modified_;
@@ -133,6 +135,7 @@ private:
     int midpixel_y_;
     static const double room_width_;
     static const double room_height_;
+    double hover_throttle_ = 0.5;
 
     double waypoint_distance_ = 0.3;
     double sample_dt_ = 0.02;
@@ -142,12 +145,28 @@ private:
     MatrixXd optimized_states_;
     MatrixXd optimized_inputs_;
 
+    Matrix<double, 10, 1> x_r_;
+    Matrix<double, 4, 1> u_r_;
+    Vector3d start_position_;
+
     TrajectorySmoother* smoother_ = nullptr;
     TrajOptROS* ros_node_;
     int ros_node_timer_id_;
 
     int publish_command_timer_id_;
     int cmd_idx_;
+
+    enum
+    {
+        UNCOMMANDED,
+        FLY_TO_ALTITUDE,
+        FLY_TO_START_OF_TRAJECTORY,
+        FLY_TRAJECTORY,
+        FLY_TO_HOME,
+        LAND
+    };
+
+    int state_ = UNCOMMANDED;
 };
 
 #endif

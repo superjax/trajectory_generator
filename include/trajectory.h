@@ -13,7 +13,7 @@
 using namespace Eigen;
 using namespace std;
 
-typedef vector<Vector4d, aligned_allocator<Vector4d>> trajVec;
+typedef vector<Vector3d, aligned_allocator<Vector3d>> trajVec;
 class TrajectorySmoother
 {
 public:
@@ -26,7 +26,7 @@ private:
   bool solveTrajectoryOpt();
   void calcStatesAndInputsFromTrajectory();
   void log() const;
-  Vector4d sat(const Vector4d &v);
+  Vector3d sat(const Vector3d &v);
 
 
   const trajVec& rough_traj_;
