@@ -48,7 +48,6 @@ void LQR::calcJacobian(const Vector10d &x)
   A_.block<3,3>(dVEL, dVEL) = -I_3x3 * drag_term_;
 
 
-
   B_.block<3,3>(dPOS, OMEGA).setZero();
   B_.block<3,3>(dATT, OMEGA) = I_3x3;
   B_.block<3,3>(dVEL, OMEGA).setZero();
