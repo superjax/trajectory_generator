@@ -23,6 +23,7 @@ public:
 
 private:
   void downSampleAngle();
+  void downSampleDistance();
   bool solveTrajectoryOpt();
   void calcStatesAndInputsFromTrajectory();
   void log() const;

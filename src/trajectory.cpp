@@ -64,12 +64,13 @@ bool TrajectorySmoother::solveTrajectoryOpt()
   }
 
   mav_trajectory_generation::NonlinearOptimizationParameters parameters;
-  parameters.max_iterations = 1000;
-  parameters.f_rel = 0.05;
-  parameters.x_rel = 0.1;
-  parameters.time_penalty = 50000.0;
-  parameters.initial_stepsize_rel = 0.1;
-  parameters.inequality_constraint_tolerance = 0.3;
+//  parameters.max_iterations = 1000;
+//  parameters.f_rel = 0.05;
+//  parameters.x_rel = 0.1;
+//  parameters.time_penalty = 500.0;
+//  parameters.initial_stepsize_rel = 0.1;
+//  parameters.inequality_constraint_tolerance = 0.001;
+//  parameters.equality_constraint_tolerance = 0.0001;
 
   mav_trajectory_generation::PolynomialOptimizationNonLinear<10> opt(dim, parameters);
   try
