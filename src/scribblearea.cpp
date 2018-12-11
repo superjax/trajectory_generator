@@ -88,7 +88,10 @@ void ScribbleArea::timerEvent(QTimerEvent * ev)
   if (ev->timerId() == ros_node_timer_id_)
     ros::spinOnce();
   else if (ev->timerId() == publish_command_timer_id_)
+  {
+    updateState();
     updateCommand();
+  }
 }
 
 void ScribbleArea::initROS(int argc, char **argv)
@@ -309,6 +312,7 @@ void ScribbleArea::handleFlyButton()
       cout << "Fly to altitude" << endl;
       publish_command_timer_id_ = startTimer(1000 * sample_dt_);
       start_position_ = ros_node_->getCurrentPosition();
+      updateCommand();
   }
 }
 
@@ -316,11 +320,12 @@ void ScribbleArea::handleRTHButton()
 {
   cout << "fly home" << endl;
   state_ = FLY_TO_HOME;
+  updateCommand();
 }
 
 void ScribbleArea::updateState()
 {
-    if ((x_r_.segment<3>(LQR::POS) - ros_node_->getCurrentPosition()).norm() < 0.1)
+    if ((x_r_.segment<3>(LQR::POS) - ros_node_->getCurrentPosition()).norm() < 0.3)
     {
         switch (state_)
         {
@@ -357,7 +362,6 @@ void ScribbleArea::updateState()
 
 void ScribbleArea::updateCommand()
 {
-    updateState();
     x_r_ << 0, 0, 0,
             1, 0, 0, 0,
             0, 0, 0;
@@ -367,18 +371,12 @@ void ScribbleArea::updateCommand()
     switch (state_)
     {
     case FLY_TO_ALTITUDE:
-        x_r_.segment<3>(LQR::POS) << start_position_.x(),
-                start_position_.y(),
-                trajectory_altitude_;
-        x_r_.segment<4>(LQR::ATT) = quat::Quatd::Identity().elements();
-        x_r_.segment<3>(LQR::VEL) << 0, 0, 0;
+        x_r_.segment<3>(LQR::POS) << start_position_.x(), start_position_.y(), trajectory_altitude_;
         break;
     case FLY_TO_START_OF_TRAJECTORY:
         x_r_.segment<3>(LQR::POS) << optimized_states_(0,0),
                 optimized_states_(1,0),
                 optimized_states_(2,0);
-        x_r_.segment<4>(LQR::ATT) = quat::Quatd::Identity().elements();
-        x_r_.segment<3>(LQR::VEL) << 0, 0, 0;
         break;
     case FLY_TRAJECTORY:
         x_r_ = optimized_states_.col(cmd_idx_);
@@ -388,17 +386,14 @@ void ScribbleArea::updateCommand()
         x_r_.segment<3>(LQR::POS) << start_position_.x(),
                 start_position_.y(),
                 trajectory_altitude_;
-        x_r_.segment<4>(LQR::ATT) = quat::Quatd::Identity().elements();
-        x_r_.segment<3>(LQR::VEL) << 0, 0, 0;
         break;
     case LAND:
         x_r_.segment<3>(LQR::POS) << start_position_;
-        x_r_.segment<4>(LQR::ATT) = quat::Quatd::Identity().elements();
-        x_r_.segment<3>(LQR::VEL) << 0, 0, 0;
         break;
     case UNCOMMANDED:
         x_r_.setConstant(NAN);
         u_r_.setConstant(NAN);
+        killTimer(publish_command_timer_id_);
     default:
         break;
     }
@@ -417,8 +412,6 @@ void ScribbleArea::plotSmoothTrajectory()
     QPoint new_point(smooth_traj_[i](0)*pixel_to_meters_ + midpixel_x_,
                      smooth_traj_[i](1)*pixel_to_meters_ + midpixel_y_);
         drawLineTo(new_point, downsampled_color);
-    if (i == 1);
-    first_point_ = last_point_;
   }
   drawLineTo(first_point_, downsampled_color);
   update();

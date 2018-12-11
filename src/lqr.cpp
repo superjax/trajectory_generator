@@ -20,11 +20,27 @@ void LQR::boxminus(const Vector10d &x1, const Vector10d &x2, Vector9d &dx) const
 bool LQR::computeControl(const Vector10d &x, const Vector10d &x_c, Vector4d &u)
 {
   boxminus(x_c, x, dx_);
+  inputSat(dx_);
   calcJacobian(x);
   care_solver_.solve(X_, A_, B_, Q_, R_);
   K_ = Rinv_ * B_.transpose() * X_;
   u = K_ * dx_;
   return true;
+}
+
+double LQR::sat(double x, double max, double min) const
+{
+    return x > max ? max : x < min ? min : x;
+}
+
+void LQR::inputSat(Vector9d &dx) const
+{
+    for (int i = 0; i < 3; i++)
+    {
+        dx(i + dPOS) = sat(dx(i + dPOS), max_pos_err_, -max_pos_err_);
+        dx(i + dATT) = sat(dx(i + dATT), max_att_err_, -max_att_err_);
+        dx(i + dVEL) = sat(dx(i + dVEL), max_vel_err_, -max_vel_err_);
+    }
 }
 
 void LQR::calcJacobian(const Vector10d &x)

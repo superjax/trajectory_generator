@@ -35,8 +35,11 @@ public:
   inline void setR(Matrix4d& R) { R_ = R; Rinv_ = R.inverse();}
 
   void boxminus(const Vector10d& x1, const Vector10d& x2, Vector9d& dx) const;
+  void inputSat(Vector9d& dx) const;
   void calcJacobian(const Vector10d& x);
 private:
+
+  double sat(double x, double max, double min) const;
 
 
   Matrix9d A_;
@@ -49,6 +52,9 @@ private:
   Matrix49d K_;
   double drag_term_;
   double hover_throttle_;
+  double max_pos_err_ = 1.0;
+  double max_att_err_ = 0.3;
+  double max_vel_err_ = 1.0;
 
   CareSolver<9, 4> care_solver_;
 };

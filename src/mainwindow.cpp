@@ -62,7 +62,7 @@ MainWindow::MainWindow(int argc, char **argv)
     altitude_spin_box_->setSingleStep(0.1);
     altitude_spin_box_->setMaximum(3.0);
     altitude_spin_box_->setMinimum(0.1);
-    altitude_spin_box_->setValue(1.0);
+    altitude_spin_box_->setValue(1.5);
     altitude_spin_box_label_ = new QLabel();
     altitude_spin_box_label_->setText("altitude (m):");
 
@@ -71,7 +71,7 @@ MainWindow::MainWindow(int argc, char **argv)
     velocity_spin_box_->setSingleStep(0.1);
     velocity_spin_box_->setMaximum(20.0);
     velocity_spin_box_->setMinimum(0.1);
-    velocity_spin_box_->setValue(1.0);
+    velocity_spin_box_->setValue(2.0);
     velocity_spin_box_label_ = new QLabel();
     velocity_spin_box_label_->setText("max vel (m/s):");
 
@@ -80,7 +80,7 @@ MainWindow::MainWindow(int argc, char **argv)
     acc_spin_box_->setSingleStep(0.1);
     acc_spin_box_->setMaximum(20.0);
     acc_spin_box_->setMinimum(0.1);
-    acc_spin_box_->setValue(1.0);
+    acc_spin_box_->setValue(5.0);
     acc_spin_box_label_ = new QLabel();
     acc_spin_box_label_->setText("max accel (m/s^2):");
 
@@ -114,12 +114,6 @@ MainWindow::MainWindow(int argc, char **argv)
     return_to_home_button_->setText("RTH");
     connect(return_to_home_button_, SIGNAL(released()), scribble_area_, SLOT(handleRTHButton()));
     control_layout_->addWidget(return_to_home_button_);
-
-    land_button_ = new QPushButton();
-    land_button_->setText("land");
-    connect(land_button_, SIGNAL(released()), scribble_area_, SLOT(handleLandButton()));
-    control_layout_->addWidget(land_button_);
-    control_layout_->addStretch(1);
 
     main_layout_->addLayout(control_layout_);
 

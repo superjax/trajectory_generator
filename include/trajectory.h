@@ -22,7 +22,7 @@ public:
   const void optimize(MatrixXd &states, MatrixXd &inputs);
 
 private:
-  void downSample();
+  void downSampleAngle();
   bool solveTrajectoryOpt();
   void calcStatesAndInputsFromTrajectory();
   void log() const;

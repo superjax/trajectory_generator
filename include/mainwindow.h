@@ -102,7 +102,6 @@ private:
     QLabel *acc_spin_box_label_;
     QPushButton *fly_button_;
     QPushButton *return_to_home_button_;
-    QPushButton *land_button_;
 
     QAction *open_act_;
     QList<QAction *> save_as_acts_;

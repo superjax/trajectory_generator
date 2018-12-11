@@ -127,7 +127,7 @@ void TrajectorySmoother::calcStatesAndInputsFromTrajectory()
   }
 }
 
-void TrajectorySmoother::downSample()
+void TrajectorySmoother::downSampleAngle()
 {
   int i = 0;
   int j = 1;
@@ -141,7 +141,7 @@ void TrajectorySmoother::downSample()
     Vector3d new_dir = rough_traj_[j+1] - rough_traj_[j];
     new_dir /= new_dir.norm();
 
-    if (std::acos(new_dir.transpose() * dir) > M_PI * 30.0 / 180.0)
+    if (std::acos(new_dir.transpose() * dir) > M_PI * 25.0 / 180.0)
     {
       downsampled_traj_.push_back(sat(rough_traj_[j]));
       dir = new_dir;
@@ -150,9 +150,32 @@ void TrajectorySmoother::downSample()
   }
 }
 
+void TrajectorySmoother::downSampleDistance()
+{
+    int i = 0;
+    int j = 1;
+    downsampled_traj_.clear();
+    downsampled_traj_.push_back(sat(rough_traj_[0]));
+
+    Vector3d dir = rough_traj_[j+1] - rough_traj_[j];
+    dir /= dir.norm();
+    while (j < rough_traj_.size()-1)
+    {
+        Vector3d new_dir = rough_traj_[j+1] - rough_traj_[j];
+        new_dir /= new_dir.norm();
+
+        if (std::acos(new_dir.transpose() * dir) > M_PI * 25.0 / 180.0)
+        {
+            downsampled_traj_.push_back(sat(rough_traj_[j]));
+            dir = new_dir;
+        }
+        j++;
+    }
+}
+
 const void TrajectorySmoother::optimize(MatrixXd& states, MatrixXd& inputs)
 {
-  downSample();
+  downSampleAngle();
   if (solveTrajectoryOpt())
   {
     calcStatesAndInputsFromTrajectory();
