@@ -6,7 +6,7 @@ LQR_ROS::LQR_ROS() :
   private_nh_("~")
 {
   hover_throttle_ = 0.5;
-  drag_term_ = 0.2;
+  drag_term_ = 0.1;
 
   odom_sub_ = nh_.subscribe("state", 1, &LQR_ROS::odomCallback, this);
   status_sub_ = nh_.subscribe("status", 1, &LQR_ROS::statusCallback, this);
@@ -22,6 +22,7 @@ LQR_ROS::LQR_ROS() :
   Matrix4d R = Rdiag.asDiagonal();
   lqr_.setQ(Q);
   lqr_.setR(R);
+  lqr_.setDragTerm(drag_term_);
 }
 
 
@@ -59,25 +60,38 @@ void LQR_ROS::trajCommandCallback(const trajectory_generator::TrajectoryCommandC
   u_r_(LQR::OMEGA+1) = cmd->omega.y;
   u_r_(LQR::OMEGA+2) = cmd->omega.z;
   u_r_(LQR::F) = cmd->F;
-  got_reference_ = true;
+
+  if  ((x_r_.array() != x_r_.array()).any()
+       || (u_r_.array() != u_r_.array()).any())
+  {
+      got_reference_ = false;
+  }
+  else
+  {
+      got_reference_ = true;
+  }
   computeCommand();
 }
 
 void LQR_ROS::computeCommand()
 {
-  if (!got_reference_ || !got_state_)
-    return;
-
-  lqr_.computeControl(x_, x_r_, u_tilde_);
-  u_ = u_r_ + u_tilde_;
-
   rosflight_msgs::Command cmd;
+  if (!got_reference_ || !got_state_)
+  {
+    u_.setZero();
+  }
+  else
+  {
+    lqr_.computeControl(x_, x_r_, u_tilde_);
+    u_ = u_r_ + u_tilde_;
+  }
+
   cmd.header.stamp = odom_stamp_;
   cmd.mode = rosflight_msgs::Command::MODE_ROLLRATE_PITCHRATE_YAWRATE_THROTTLE;
   cmd.x = u_(LQR::OMEGA);
   cmd.y = u_(LQR::OMEGA+1);
   cmd.z = u_(LQR::OMEGA+2);
-  cmd.F = u_(LQR::F);
+  cmd.F = u_(LQR::F) > 0.9 ? 0.9 : u_(LQR::F) < 0.0 ? 0.0 : u_(LQR::F);
   command_pub_.publish(cmd);
 }
 
