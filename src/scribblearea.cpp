@@ -84,6 +84,9 @@ void ScribbleArea::drawBackground()
 {
     QPainter qPainter(&image_);
     qPainter.setBrush(Qt::NoBrush);
+    int buffer_width_pixel = 1.0*pixel_to_meters_;
+    qPainter.setPen(QPen(QColor(80, 45, 45), buffer_width_pixel, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
+    qPainter.drawRect(buffer_width_pixel/2.0,buffer_width_pixel/2.0,room_width_*pixel_to_meters_-buffer_width_pixel, room_height_*pixel_to_meters_-buffer_width_pixel);
     qPainter.setPen(QPen(QColor(45, 45, 45), 20.0, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
     qPainter.drawRect(10,10,room_width_*pixel_to_meters_-10, room_height_*pixel_to_meters_-10);
     midpixel_x_ = room_width_*pixel_to_meters_/2;
@@ -138,6 +141,19 @@ void ScribbleArea::mousePressEvent(QMouseEvent *event)
             parent_->setAltValue(rough_trajectory_[selected_point_idx_](2));
         }
     }
+}
+
+void ScribbleArea::drawPosition(const Vector3d &position, const Vector3d &desired_position)
+{
+    QPoint pixel(position.x() * pixel_to_meters_ + midpixel_x_,
+                 position.y() * pixel_to_meters_ + midpixel_y_);
+    QPoint pixel_d(desired_position.x() * pixel_to_meters_ + midpixel_x_,
+                   desired_position.y() * pixel_to_meters_ + midpixel_y_);
+    clearImage();
+    drawSmoothTraj();
+    drawRoughTraj();
+    drawPoint(pixel, position_color_);
+    drawPoint(pixel_d, smooth_traj_color_);
 }
 
 void ScribbleArea::deletePoint()
@@ -237,6 +253,7 @@ void ScribbleArea::resizeEvent(QResizeEvent *event)
     double y_scale = (height()-10) / room_height_;
     pixel_to_meters_ = qMin(x_scale, y_scale);
     clearImage();
+    drawSmoothTraj();
     drawRoughTraj();
     update();
     QWidget::resizeEvent(event);
@@ -309,23 +326,31 @@ void ScribbleArea::print()
     }
 }
 
-void ScribbleArea::plotSmoothTrajectory(const trajVec& smooth_traj)
+void ScribbleArea::updateSmoothTraj(const MatrixXd &optimized_states)
 {
-    QColor downsampled_color(Qt::yellow);
-    QPoint prev_last_point = last_point_;
-    clearImage();
-    last_point_ = QPoint(smooth_traj[0](0)*pixel_to_meters_ + midpixel_x_,
-            smooth_traj[0](1)*pixel_to_meters_ + midpixel_y_);
-    QPoint first_point = last_point_;
-    for (int i = 1; i < smooth_traj.size(); i++)
+    smooth_traj_.resize(optimized_states.cols());
+    for (int i = 0; i < optimized_states.cols(); i++)
     {
-        QPoint new_point(smooth_traj[i](0)*pixel_to_meters_ + midpixel_x_,
-                         smooth_traj[i](1)*pixel_to_meters_ + midpixel_y_);
-                drawLineTo(new_point, downsampled_color);
+        smooth_traj_[i] = optimized_states.block<3,1>(0, i);
     }
-    drawLineTo(first_point, downsampled_color);
-    drawRoughTraj();
-    update();
+    drawSmoothTraj();
+}
+
+void ScribbleArea::drawSmoothTraj()
+{
+    if (smooth_traj_.size() == 0)
+        return;
+    QPoint prev_last_point = last_point_;
+    last_point_ = QPoint(smooth_traj_[0](0)*pixel_to_meters_ + midpixel_x_,
+                         smooth_traj_[0](1)*pixel_to_meters_ + midpixel_y_);
+    QPoint first_point = last_point_;
+    for (int i = 1; i < smooth_traj_.size(); i++)
+    {
+        QPoint new_point(smooth_traj_[i](0)*pixel_to_meters_ + midpixel_x_,
+                         smooth_traj_[i](1)*pixel_to_meters_ + midpixel_y_);
+        drawLineTo(new_point, smooth_traj_color_);
+    }
+    drawLineTo(first_point, smooth_traj_color_);
     last_point_ = prev_last_point;
 }
 

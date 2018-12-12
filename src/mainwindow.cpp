@@ -101,10 +101,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
     (void)event;
 
     if (smoother_)
-      delete smoother_;
+        delete smoother_;
 
     if(ros_node_)
-      delete ros_node_;
+        delete ros_node_;
 }
 
 void MainWindow::about()
@@ -160,14 +160,7 @@ void MainWindow::createTrajectory()
     smoother_->setBounds(velocity_spin_box_->value(), acc_spin_box_->value());
     smoother_->optimize(optimized_states_, optimized_inputs_);
 
-    trajVec smooth_traj;
-
-    smooth_traj.resize(optimized_states_.cols());
-    for (int i = 0; i < optimized_states_.cols(); i++)
-    {
-        smooth_traj[i] = optimized_states_.block<3,1>(0, i);
-    }
-    scribble_area_->plotSmoothTrajectory(smooth_traj);
+    scribble_area_->updateSmoothTraj(optimized_states_);
 }
 
 void MainWindow::updateState()
@@ -190,7 +183,7 @@ void MainWindow::updateState()
             state_ = LAND;
             break;
         case LAND:
-            if ((x_r_.segment<3>(LQR::POS) - start_position_).norm() < 1e-3)
+            if (std::abs(x_r_(LQR::POS+2) - start_position_.z()) < 0.05)
             {
                 cout << "done" << endl;
                 state_ = UNCOMMANDED;
@@ -207,7 +200,7 @@ void MainWindow::updateState()
     {
         cmd_idx_++;
         if (cmd_idx_ == optimized_states_.cols())
-          cmd_idx_ = 0;
+            cmd_idx_ = 0;
     }
 }
 
@@ -240,6 +233,7 @@ void MainWindow::updateCommand()
         break;
     case LAND:
         landing_commanded_position_.z() += 0.3*sample_dt_;
+        landing_commanded_position_.z() = std::min(start_position_.z(), landing_commanded_position_.z());
         x_r_.segment<3>(LQR::POS) = landing_commanded_position_;
         break;
     case UNCOMMANDED:
@@ -255,42 +249,49 @@ void MainWindow::updateCommand()
 
 void MainWindow::initROS(int argc, char **argv)
 {
-  ros::init(argc, argv, "trajectory_generator");
-  ros_node_ = new TrajOptROS();
-  ros_node_timer_id_ = startTimer(1);
+    ros::init(argc, argv, "trajectory_generator");
+    ros_node_ = new TrajOptROS();
+    ros_node_timer_id_ = startTimer(1);
 }
 
 void MainWindow::timerEvent(QTimerEvent * ev)
 {
-  if (ev->timerId() == ros_node_timer_id_)
-    ros::spinOnce();
-  else if (ev->timerId() == publish_command_timer_id_)
-  {
-    updateState();
-    updateCommand();
-  }
+    if (ev->timerId() == ros_node_timer_id_)
+    {
+        ros::spinOnce();
+    }
+    else if (ev->timerId() == publish_command_timer_id_)
+    {
+        scribble_area_->drawPosition(ros_node_->getCurrentPosition(), x_r_.segment<3>(0));
+        updateState();
+        updateCommand();
+    }
 }
 
 
 void MainWindow::handleRTHButton()
 {
-  cout << "fly home" << endl;
-  state_ = FLY_TO_HOME;
-  updateCommand();
+    cout << "fly home" << endl;
+    state_ = FLY_TO_HOME;
+    updateCommand();
 }
 
 void MainWindow::handleFlyButton()
 {
-  if (state_ == UNCOMMANDED)
-  {
-      cmd_idx_ = 0;
-      state_ = FLY_TO_ALTITUDE;
-      cout << "Fly to altitude" << endl;
-      publish_command_timer_id_ = startTimer(1000 * sample_dt_);
-      start_position_ = ros_node_->getCurrentPosition();
-      scribble_area_->lockScreen(true);
-      updateCommand();
-  }
+    if (optimized_states_.cols() == 0)
+    {
+        createTrajectory();
+    }
+    if (state_ == UNCOMMANDED)
+    {
+        cmd_idx_ = 0;
+        state_ = FLY_TO_ALTITUDE;
+        cout << "Fly to altitude" << endl;
+        publish_command_timer_id_ = startTimer(1000 * sample_dt_);
+        start_position_ = ros_node_->getCurrentPosition();
+        scribble_area_->lockScreen(true);
+        updateCommand();
+    }
 }
 
 

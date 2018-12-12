@@ -123,7 +123,6 @@ protected:
     QAction *clear_screen_act_;
     QAction *about_act_;
 
-
     TrajectorySmoother* smoother_ = nullptr;
     MatrixXd optimized_states_;
     MatrixXd optimized_inputs_;

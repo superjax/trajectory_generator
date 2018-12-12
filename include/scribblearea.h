@@ -35,8 +35,9 @@ public:
     QColor penColor() const { return pen_color_; }
     int penWidth() const { return pen_width_; }
     const trajVec& getRoughTrajectory() { return rough_trajectory_; }
-    void plotSmoothTrajectory(const trajVec& smooth_traj);
     void lockScreen(bool setLocked) { locked_screen_ = setLocked; }
+    void drawPosition(const Vector3d& position, const Vector3d& desired_position);
+    void updateSmoothTraj(const MatrixXd& optimized_states);
 
     static const double room_width_;
     static const double room_height_;
@@ -61,6 +62,7 @@ private:
     void drawBackground();
     void addPoint(const QPoint &point);
     void movePoint(const QPoint& point, int id);
+    void drawSmoothTraj();
     void drawRoughTraj();
     void drawLineTo(const QPoint &endPoint, const QColor &pen_color, bool draw_point=false);
     void drawPoint(const Vector2d &pix, const QColor &color);
@@ -71,6 +73,8 @@ private:
     int pen_width_;
     const QColor pen_color_ = Qt::cyan;
     const QColor selected_color_ = Qt::red;
+    const QColor position_color_ = Qt::green;
+    const QColor smooth_traj_color_ = Qt::yellow;
     QImage image_;
     QPoint last_point_;
     double trajectory_altitude_;
@@ -87,6 +91,7 @@ private:
     const int point_radius_ = 5;
 
     trajVec rough_trajectory_;
+    trajVec smooth_traj_;
 
 };
 
