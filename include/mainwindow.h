@@ -73,6 +73,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(int argc, char** argv);
+    void setAltValue(double alt);
 
 public slots:
     void about();
@@ -108,6 +109,7 @@ protected:
     QDoubleSpinBox *acc_spin_box_;
     QLabel *acc_spin_box_label_;
     QPushButton *fly_button_;
+    QPushButton *delete_button_;
     QPushButton *return_to_home_button_;
     QPushButton *clear_screen_button_;
     QPushButton *create_trajectory_button_;

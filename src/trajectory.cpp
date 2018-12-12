@@ -15,23 +15,10 @@ TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double sample_dt) :
 {}
 
 
-void TrajectorySmoother::setBounds(double max_x, double min_x, double max_y, double min_y, double max_v, double max_a)
+void TrajectorySmoother::setBounds(double max_v, double max_a)
 {
-  max_x_ = max_x;
-  min_x_ = min_x;
-  max_y_ = max_y;
-  min_y_ = min_y;
   max_v_ = max_v;
   max_a_ = max_a;
-}
-
-Vector3d TrajectorySmoother::sat(const Vector3d& v)
-{
-  Vector3d out;
-  out.x() = (v.x() > max_x_) ? max_x_ : (v.x() < min_x_) ? min_x_ : v.x();
-  out.y() = (v.y() > max_y_) ? max_y_ : (v.y() < min_y_) ? min_y_ : v.y();
-  out.z() = v.z();
-  return out;
 }
 
 bool TrajectorySmoother::solveTrajectoryOpt()
