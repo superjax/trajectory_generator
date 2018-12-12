@@ -11,6 +11,7 @@ MainWindow::MainWindow(int argc, char **argv)
     connect(altitude_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setAltitude(double)));
     altitude_spin_box_->setSingleStep(0.1);
     altitude_spin_box_->setMaximum(3.0);
+    altitude_spin_box_->setMaximum(100.0);
     altitude_spin_box_->setMinimum(0.1);
     altitude_spin_box_->setValue(1.5);
     altitude_spin_box_label_ = new QLabel();
@@ -25,7 +26,6 @@ MainWindow::MainWindow(int argc, char **argv)
     velocity_spin_box_label_->setText("max vel (m/s):");
 
     acc_spin_box_ = new QDoubleSpinBox();
-    connect(acc_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setMaxAccel(double)));
     acc_spin_box_->setSingleStep(0.1);
     acc_spin_box_->setMaximum(20.0);
     acc_spin_box_->setMinimum(0.1);
@@ -149,7 +149,6 @@ void MainWindow::setAltValue(double alt)
     altitude_spin_box_->blockSignals(false);
 }
 
-
 void MainWindow::createTrajectory()
 {
     if (smoother_ != nullptr)
@@ -158,7 +157,7 @@ void MainWindow::createTrajectory()
     const trajVec& rough_trajectory_(scribble_area_->getRoughTrajectory());
 
     smoother_ = new TrajectorySmoother(rough_trajectory_, sample_dt_);
-
+    smoother_->setBounds(velocity_spin_box_->value(), acc_spin_box_->value());
     smoother_->optimize(optimized_states_, optimized_inputs_);
 
     trajVec smooth_traj;
@@ -173,7 +172,7 @@ void MainWindow::createTrajectory()
 
 void MainWindow::updateState()
 {
-    if ((x_r_.segment<3>(LQR::POS) - ros_node_->getCurrentPosition()).norm() < 0.3)
+    if ((x_r_.segment<3>(LQR::POS) - ros_node_->getCurrentPosition()).norm() < 0.1)
     {
         switch (state_)
         {
@@ -187,11 +186,15 @@ void MainWindow::updateState()
             break;
         case FLY_TO_HOME:
             cout << "land" << endl;
+            landing_commanded_position_ << start_position_.x(), start_position_.y(), optimized_states_(2,0);
             state_ = LAND;
             break;
         case LAND:
-            cout << "done" << endl;
-            state_ = UNCOMMANDED;
+            if ((x_r_.segment<3>(LQR::POS) - start_position_).norm() < 1e-3)
+            {
+                cout << "done" << endl;
+                state_ = UNCOMMANDED;
+            }
             break;
         case FLY_TRAJECTORY:
         case UNCOMMANDED:
@@ -236,7 +239,8 @@ void MainWindow::updateCommand()
                 optimized_states_(2,0);
         break;
     case LAND:
-        x_r_.segment<3>(LQR::POS) << start_position_;
+        landing_commanded_position_.z() += 0.3*sample_dt_;
+        x_r_.segment<3>(LQR::POS) = landing_commanded_position_;
         break;
     case UNCOMMANDED:
         x_r_.setConstant(NAN);

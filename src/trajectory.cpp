@@ -53,7 +53,7 @@ bool TrajectorySmoother::solveTrajectoryOpt()
 //  parameters.max_iterations = 1000;
 //  parameters.f_rel = 0.05;
 //  parameters.x_rel = 0.1;
-//  parameters.time_penalty = 500.0;
+  parameters.time_penalty = 10000.0;
 //  parameters.initial_stepsize_rel = 0.1;
 //  parameters.inequality_constraint_tolerance = 0.001;
 //  parameters.equality_constraint_tolerance = 0.0001;

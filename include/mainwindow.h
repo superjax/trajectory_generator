@@ -133,6 +133,7 @@ protected:
     Matrix<double, 10, 1> x_r_;
     Matrix<double, 4, 1> u_r_;
     Vector3d start_position_;
+    Vector3d landing_commanded_position_;
 
     TrajOptROS* ros_node_;
     int ros_node_timer_id_;
