@@ -55,7 +55,7 @@
 
 MainWindow::MainWindow(int argc, char **argv)
 {
-    scribble_area_ = new ScribbleArea(argc, argv, this);
+    scribble_area_ = new ScribbleArea(this);
 
     altitude_spin_box_ = new QDoubleSpinBox();
     connect(altitude_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setAltitude(double)));
@@ -67,7 +67,6 @@ MainWindow::MainWindow(int argc, char **argv)
     altitude_spin_box_label_->setText("altitude (m):");
 
     velocity_spin_box_ = new QDoubleSpinBox();
-    connect(velocity_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setMaxVelocity(double)));
     velocity_spin_box_->setSingleStep(0.1);
     velocity_spin_box_->setMaximum(20.0);
     velocity_spin_box_->setMinimum(0.1);
@@ -107,13 +106,25 @@ MainWindow::MainWindow(int argc, char **argv)
 
     fly_button_ = new QPushButton();
     fly_button_->setText("Fly");
-    connect(fly_button_, SIGNAL(released()), scribble_area_, SLOT(handleFlyButton()));
+    connect(fly_button_, SIGNAL(released()), this, SLOT(handleFlyButton()));
     control_layout_->addWidget(fly_button_);
 
     return_to_home_button_ = new QPushButton();
     return_to_home_button_->setText("RTH");
-    connect(return_to_home_button_, SIGNAL(released()), scribble_area_, SLOT(handleRTHButton()));
+    connect(return_to_home_button_, SIGNAL(released()), this, SLOT(handleRTHButton()));
     control_layout_->addWidget(return_to_home_button_);
+
+    clear_screen_button_ = new QPushButton();
+    clear_screen_button_->setText("Clear Screen");
+    connect(clear_screen_button_, SIGNAL(released()), scribble_area_, SLOT(clearImage()));
+    control_layout_->addWidget(clear_screen_button_);
+
+    create_trajectory_button_ = new QPushButton();
+    create_trajectory_button_->setText("Create Trajectory");
+    connect(create_trajectory_button_, SIGNAL(released()), this, SLOT(createTrajectory()));
+    control_layout_->addWidget(create_trajectory_button_);
+
+    control_layout_->addStretch(1);
 
     main_layout_->addLayout(control_layout_);
 
@@ -124,6 +135,8 @@ MainWindow::MainWindow(int argc, char **argv)
     createActions();
     createMenus();
 
+    initROS(argc, argv);
+
     setWindowTitle(tr("TrajectoryGenerator"));
     resize(835, 918);
 }
@@ -131,50 +144,26 @@ MainWindow::MainWindow(int argc, char **argv)
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     (void)event;
+
+    if (smoother_)
+      delete smoother_;
+
+    if(ros_node_)
+      delete ros_node_;
 }
-
-//void MainWindow::penColor()
-//{
-//    QColor newColor = QColorDialog::getColor(scribble_area_->penColor());
-//    if (newColor.isValid())
-//        scribble_area_->setPenColor(newColor);
-//}
-
-//void MainWindow::penWidth()
-//{
-//    bool ok;
-//    int newWidth = QInputDialog::getInt(this, tr("TrajectoryGenerator"),
-//                                        tr("Select pen width:"),
-//                                        scribble_area_->penWidth(),
-//                                        1, 50, 1, &ok);
-//    if (ok)
-//        scribble_area_->setPenWidth(newWidth);
-//}
 
 void MainWindow::about()
 {
     QMessageBox::about(this, tr("About TrajectoryGenerator"),
-            tr("<p></p>"));
+                       tr("<p></p>"));
 }
 
 
 void MainWindow::createActions()
 {
-//    exit_act_ = new QAction(tr("E&xit"), this);
-//    exit_act_->setShortcuts(QKeySequence::Quit);
-//    connect(exit_act_, SIGNAL(triggered()), this, SLOT(close()));
-
-//    pen_color_act_ = new QAction(tr("&Pen Color..."), this);
-//    connect(pen_color_act_, SIGNAL(triggered()), this, SLOT(penColor()));
-
-//    pen_width_act_ = new QAction(tr("Pen &Width..."), this);
-//    connect(pen_width_act_, SIGNAL(triggered()), this, SLOT(penWidth()));
-
     clear_screen_act_ = new QAction(tr("&Clear Screen"), this);
     clear_screen_act_->setShortcut(tr("Ctrl+L"));
-    connect(clear_screen_act_, SIGNAL(triggered()),
-            scribble_area_, SLOT(clearImage()));
-
+    connect(clear_screen_act_, SIGNAL(triggered()), scribble_area_, SLOT(clearImage()));
     about_act_ = new QAction(tr("&About"), this);
     connect(about_act_, SIGNAL(triggered()), this, SLOT(about()));
 }
@@ -188,9 +177,6 @@ void MainWindow::createMenus()
     file_menu_ = new QMenu(tr("&File"), this);
 
     option_menu_ = new QMenu(tr("&Options"), this);
-//    option_menu_->addAction(pen_color_act_);
-//    option_menu_->addAction(pen_width_act_);
-//    option_menu_->addSeparator();
     option_menu_->addAction(clear_screen_act_);
 
     help_menu_ = new QMenu(tr("&Help"), this);
@@ -199,6 +185,150 @@ void MainWindow::createMenus()
     menuBar()->addMenu(file_menu_);
     menuBar()->addMenu(option_menu_);
     menuBar()->addMenu(help_menu_);
+}
+
+
+void MainWindow::createTrajectory()
+{
+    if (smoother_ != nullptr)
+        delete smoother_;
+
+    const trajVec& rough_trajectory_(scribble_area_->getRoughTrajectory());
+
+    smoother_ = new TrajectorySmoother(rough_trajectory_, sample_dt_);
+    static const double wall_buffer = 1.0;
+    static const double max_x = ScribbleArea::room_width_/2.0 - wall_buffer;
+    static const double min_x = -ScribbleArea::room_width_/2.0 + wall_buffer;
+    static const double max_y = ScribbleArea::room_height_/2.0 - wall_buffer;
+    static const double min_y = -ScribbleArea::room_height_/2.0 + wall_buffer;
+    smoother_->setBounds(max_x, min_x, max_y, min_y, velocity_spin_box_->value(), acc_spin_box_->value());
+
+    smoother_->optimize(optimized_states_, optimized_inputs_);
+
+    trajVec smooth_traj;
+
+    smooth_traj.resize(optimized_states_.cols());
+    for (int i = 0; i < optimized_states_.cols(); i++)
+    {
+        smooth_traj[i] = optimized_states_.block<3,1>(0, i);
+    }
+    scribble_area_->plotSmoothTrajectory(smooth_traj);
+}
+
+void MainWindow::updateState()
+{
+    if ((x_r_.segment<3>(LQR::POS) - ros_node_->getCurrentPosition()).norm() < 0.3)
+    {
+        switch (state_)
+        {
+        case FLY_TO_ALTITUDE:
+            state_ = FLY_TO_START_OF_TRAJECTORY;
+            cout << "fly to start" << endl;
+            break;
+        case FLY_TO_START_OF_TRAJECTORY:
+            state_ = FLY_TRAJECTORY;
+            cout << "fly trajectory" << endl;
+            break;
+        case FLY_TO_HOME:
+            cout << "land" << endl;
+            state_ = LAND;
+            break;
+        case LAND:
+            cout << "done" << endl;
+            state_ = UNCOMMANDED;
+            break;
+        case FLY_TRAJECTORY:
+        case UNCOMMANDED:
+        default:
+            break;
+        }
+    }
+
+    if (state_ == FLY_TRAJECTORY)
+    {
+        cmd_idx_++;
+        if (cmd_idx_ == optimized_states_.cols())
+          cmd_idx_ = 0;
+    }
+}
+
+void MainWindow::updateCommand()
+{
+    x_r_ << 0, 0, 0,
+            1, 0, 0, 0,
+            0, 0, 0;
+    u_r_ << 0, 0, 0, hover_throttle_;
+
+
+    switch (state_)
+    {
+    case FLY_TO_ALTITUDE:
+        x_r_.segment<3>(LQR::POS) << start_position_.x(), start_position_.y(), optimized_states_(2,0);
+        break;
+    case FLY_TO_START_OF_TRAJECTORY:
+        x_r_.segment<3>(LQR::POS) << optimized_states_(0,0),
+                optimized_states_(1,0),
+                optimized_states_(2,0);
+        break;
+    case FLY_TRAJECTORY:
+        x_r_ = optimized_states_.col(cmd_idx_);
+        u_r_ = optimized_inputs_.col(cmd_idx_);
+        break;
+    case FLY_TO_HOME:
+        x_r_.segment<3>(LQR::POS) << start_position_.x(),
+                start_position_.y(),
+                optimized_states_(2,0);
+        break;
+    case LAND:
+        x_r_.segment<3>(LQR::POS) << start_position_;
+        break;
+    case UNCOMMANDED:
+        x_r_.setConstant(NAN);
+        u_r_.setConstant(NAN);
+        killTimer(publish_command_timer_id_);
+    default:
+        break;
+    }
+    ros_node_->publishCommand(x_r_, u_r_);
+}
+
+void MainWindow::initROS(int argc, char **argv)
+{
+  ros::init(argc, argv, "trajectory_generator");
+  ros_node_ = new TrajOptROS();
+  ros_node_timer_id_ = startTimer(1);
+}
+
+void MainWindow::timerEvent(QTimerEvent * ev)
+{
+  if (ev->timerId() == ros_node_timer_id_)
+    ros::spinOnce();
+  else if (ev->timerId() == publish_command_timer_id_)
+  {
+    updateState();
+    updateCommand();
+  }
+}
+
+
+void MainWindow::handleRTHButton()
+{
+  cout << "fly home" << endl;
+  state_ = FLY_TO_HOME;
+  updateCommand();
+}
+
+void MainWindow::handleFlyButton()
+{
+  if (state_ == UNCOMMANDED)
+  {
+      cmd_idx_ = 0;
+      state_ = FLY_TO_ALTITUDE;
+      cout << "Fly to altitude" << endl;
+      publish_command_timer_id_ = startTimer(1000 * sample_dt_);
+      start_position_ = ros_node_->getCurrentPosition();
+      updateCommand();
+  }
 }
 
 

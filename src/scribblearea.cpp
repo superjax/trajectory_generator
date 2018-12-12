@@ -61,44 +61,14 @@ using namespace std;
 const double ScribbleArea::room_height_ = 10.21;
 const double ScribbleArea::room_width_ = 7.16;
 
-ScribbleArea::ScribbleArea(int argc, char **argv, QWidget *parent)
+ScribbleArea::ScribbleArea(QWidget *parent)
   : QWidget(parent)
 {
   setAttribute(Qt::WA_StaticContents);
-  modified_ = false;
-  scribbling_ = false;
   pen_width_ = 3;
   pen_color_ = Qt::cyan;
-  empty_ = true;
-  rough_trajectory_.clear();
   trajectory_altitude_ = -1.0;
-  initROS(argc, argv);
-}
-
-ScribbleArea::~ScribbleArea()
-{
-  if(ros_node_)
-    delete ros_node_;
-  if (smoother_)
-    delete smoother_;
-}
-
-void ScribbleArea::timerEvent(QTimerEvent * ev)
-{
-  if (ev->timerId() == ros_node_timer_id_)
-    ros::spinOnce();
-  else if (ev->timerId() == publish_command_timer_id_)
-  {
-    updateState();
-    updateCommand();
-  }
-}
-
-void ScribbleArea::initROS(int argc, char **argv)
-{
-  ros::init(argc, argv, "trajectory_generator");
-  ros_node_ = new TrajOptROS();
-  ros_node_timer_id_ = startTimer(1);
+  clearImage();
 }
 
 
@@ -106,7 +76,6 @@ void ScribbleArea::setPenColor(const QColor &newColor)
 {
   pen_color_ = newColor;
 }
-
 
 
 void ScribbleArea::setPenWidth(int newWidth)
@@ -130,32 +99,15 @@ void ScribbleArea::drawBackground()
   update();
 }
 
-
-
 void ScribbleArea::clearImage()
-
 {
   image_.fill(qRgb(0, 0, 0));
   rough_trajectory_.clear();
-  modified_ = true;
-  empty_ = true;
+  last_point_.setX(5e8);
+  last_point_.setY(5e8);
+  locked_screen_ = false;
   drawBackground();
   update();
-}
-
-void ScribbleArea::setAltitude(double alt)
-{
-  trajectory_altitude_ = -alt;
-}
-
-void ScribbleArea::setMaxVelocity(double vel)
-{
-  max_vel_ = vel;
-}
-
-void ScribbleArea::setMaxAccel(double acc)
-{
-  max_acc_ = acc;
 }
 
 void ScribbleArea::addPoint(const Vector3d &point)
@@ -173,37 +125,33 @@ void ScribbleArea::addPoint(const QPoint &point)
 
 void ScribbleArea::mousePressEvent(QMouseEvent *event)
 {
-  if (event->button() == Qt::LeftButton)
+  if (event->button() == Qt::LeftButton && !locked_screen_)
   {
-    clearImage();
-    start_position_ = ros_node_->getCurrentPosition();
     addPoint(event->pos());
-    first_point_ = event->pos();
-    last_point_ = event->pos();
-    scribbling_ = true;
+    drawLineTo(event->pos(), pen_color_, true);
   }
 }
 
 void ScribbleArea::mouseMoveEvent(QMouseEvent *event)
 {
-  if ((event->buttons() & Qt::LeftButton) && scribbling_)
-  {
-    addPoint(event->pos());
-    drawLineTo(event->pos(), pen_color_);
-  }
+//  if ((event->buttons() & Qt::LeftButton) && scribbling_)
+//  {
+//    addPoint(event->pos());
+//    drawLineTo(event->pos(), pen_color_);
+//  }
 }
 
 void ScribbleArea::mouseReleaseEvent(QMouseEvent *event)
 {
-  if (event->button() == Qt::LeftButton && scribbling_)
-  {
-    addPoint(event->pos());
-    drawLineTo(event->pos(), pen_color_);
-    scribbling_ = false;
-    drawLineTo(first_point_, pen_color_);
-    smoothTrajectory();
-    plotSmoothTrajectory();
-  }
+//  if (event->button() == Qt::LeftButton && scribbling_)
+//  {
+//    addPoint(event->pos());
+//    drawLineTo(event->pos(), pen_color_);
+//    scribbling_ = false;
+//    drawLineTo(first_point_, pen_color_);
+//    smoothTrajectory();
+//    plotSmoothTrajectory();
+//  }
 }
 
 
@@ -232,18 +180,22 @@ void ScribbleArea::resizeEvent(QResizeEvent *event)
 
 
 
-void ScribbleArea::drawLineTo(const QPoint &endPoint, QColor &pen_color)
+void ScribbleArea::drawLineTo(const QPoint &endPoint, QColor &pen_color, bool draw_point)
 
 {
   QPainter painter(&image_);
-  painter.setPen(QPen(pen_color, pen_width_, Qt::SolidLine, Qt::RoundCap,
-                      Qt::RoundJoin));
-  painter.drawLine(last_point_, endPoint);
-  modified_ = true;
-
-  int rad = (pen_width_ / 2) + 2;
-  update(QRect(last_point_, endPoint).normalized()
-         .adjusted(-rad, -rad, +rad, +rad));
+  painter.setPen(QPen(pen_color, pen_width_, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+  if (last_point_.x() < 1e8 && last_point_.y() < 1e8)
+  {
+      painter.drawLine(last_point_, endPoint);
+  }
+  int rad = 5;
+  if (draw_point)
+  {
+    painter.setBrush(pen_color);
+    painter.drawEllipse(endPoint, rad, rad);
+  }
+  update();
   last_point_ = endPoint;
 }
 
@@ -281,138 +233,21 @@ void ScribbleArea::print()
   }
 }
 
-void ScribbleArea::smoothTrajectory()
-{
-  if (smoother_ != nullptr)
-    delete smoother_;
-
-  smoother_ = new TrajectorySmoother(rough_trajectory_, waypoint_distance_, sample_dt_);
-  double wall_buffer = 1.0;
-  double max_x = room_width_ - (double)midpixel_x_ / pixel_to_meters_ - wall_buffer;
-  double min_x = max_x - room_width_ + 2.0*wall_buffer;
-  double max_y = room_height_ - (double)midpixel_y_ / pixel_to_meters_ - wall_buffer;
-  double min_y = max_y - room_height_ + 2.0*wall_buffer;
-  smoother_->setBounds(max_x, min_x, max_y, min_y, max_vel_, max_acc_);
-
-  smoother_->optimize(optimized_states_, optimized_inputs_);
-
-  smooth_traj_.resize(optimized_states_.cols());
-  for (int i = 0; i < optimized_states_.cols(); i++)
-  {
-    smooth_traj_[i] = optimized_states_.block<3,1>(0, i);
-  }
-}
-
-void ScribbleArea::handleFlyButton()
-{
-  if (state_ == UNCOMMANDED)
-  {
-      cmd_idx_ = 0;
-      state_ = FLY_TO_ALTITUDE;
-      cout << "Fly to altitude" << endl;
-      publish_command_timer_id_ = startTimer(1000 * sample_dt_);
-      start_position_ = ros_node_->getCurrentPosition();
-      updateCommand();
-  }
-}
-
-void ScribbleArea::handleRTHButton()
-{
-  cout << "fly home" << endl;
-  state_ = FLY_TO_HOME;
-  updateCommand();
-}
-
-void ScribbleArea::updateState()
-{
-    if ((x_r_.segment<3>(LQR::POS) - ros_node_->getCurrentPosition()).norm() < 0.3)
-    {
-        switch (state_)
-        {
-        case FLY_TO_ALTITUDE:
-            state_ = FLY_TO_START_OF_TRAJECTORY;
-            cout << "fly to start" << endl;
-            break;
-        case FLY_TO_START_OF_TRAJECTORY:
-            state_ = FLY_TRAJECTORY;
-            cout << "fly trajectory" << endl;
-            break;
-        case FLY_TO_HOME:
-            cout << "land" << endl;
-            state_ = LAND;
-            break;
-        case LAND:
-            cout << "done" << endl;
-            state_ = UNCOMMANDED;
-            break;
-        case FLY_TRAJECTORY:
-        case UNCOMMANDED:
-        default:
-            break;
-        }
-    }
-
-    if (state_ == FLY_TRAJECTORY)
-    {
-        cmd_idx_++;
-        if (cmd_idx_ == optimized_states_.cols())
-          cmd_idx_ = 0;
-    }
-}
-
-void ScribbleArea::updateCommand()
-{
-    x_r_ << 0, 0, 0,
-            1, 0, 0, 0,
-            0, 0, 0;
-    u_r_ << 0, 0, 0, hover_throttle_;
-
-
-    switch (state_)
-    {
-    case FLY_TO_ALTITUDE:
-        x_r_.segment<3>(LQR::POS) << start_position_.x(), start_position_.y(), trajectory_altitude_;
-        break;
-    case FLY_TO_START_OF_TRAJECTORY:
-        x_r_.segment<3>(LQR::POS) << optimized_states_(0,0),
-                optimized_states_(1,0),
-                optimized_states_(2,0);
-        break;
-    case FLY_TRAJECTORY:
-        x_r_ = optimized_states_.col(cmd_idx_);
-        u_r_ = optimized_inputs_.col(cmd_idx_);
-        break;
-    case FLY_TO_HOME:
-        x_r_.segment<3>(LQR::POS) << start_position_.x(),
-                start_position_.y(),
-                trajectory_altitude_;
-        break;
-    case LAND:
-        x_r_.segment<3>(LQR::POS) << start_position_;
-        break;
-    case UNCOMMANDED:
-        x_r_.setConstant(NAN);
-        u_r_.setConstant(NAN);
-        killTimer(publish_command_timer_id_);
-    default:
-        break;
-    }
-    ros_node_->publishCommand(x_r_, u_r_);
-}
-
-
-void ScribbleArea::plotSmoothTrajectory()
+void ScribbleArea::plotSmoothTrajectory(const trajVec& smooth_traj)
 {
   QColor downsampled_color(Qt::yellow);
-  last_point_ = QPoint(smooth_traj_[0](0)*pixel_to_meters_ + midpixel_x_,
-      smooth_traj_[0](1)*pixel_to_meters_ + midpixel_y_);
-
-  for (int i = 1; i < smooth_traj_.size(); i++)
+  last_point_ = QPoint(smooth_traj[0](0)*pixel_to_meters_ + midpixel_x_,
+                       smooth_traj[0](1)*pixel_to_meters_ + midpixel_y_);
+  QPoint first_point = last_point_;
+  for (int i = 1; i < smooth_traj.size(); i++)
   {
-    QPoint new_point(smooth_traj_[i](0)*pixel_to_meters_ + midpixel_x_,
-                     smooth_traj_[i](1)*pixel_to_meters_ + midpixel_y_);
+    QPoint new_point(smooth_traj[i](0)*pixel_to_meters_ + midpixel_x_,
+                     smooth_traj[i](1)*pixel_to_meters_ + midpixel_y_);
         drawLineTo(new_point, downsampled_color);
   }
-  drawLineTo(first_point_, downsampled_color);
+  drawLineTo(first_point, downsampled_color);
   update();
+  locked_screen_ = true;
 }
+
+

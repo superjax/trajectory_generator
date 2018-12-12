@@ -9,9 +9,8 @@
 #include "mav_trajectory_generation/trajectory.h"
 
 
-TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double delta_pos, double sample_dt) :
+TrajectorySmoother::TrajectorySmoother(const trajVec& vec, double sample_dt) :
   rough_traj_(vec),
-  delta_pos_(delta_pos),
   sample_dt_(sample_dt)
 {}
 
@@ -41,15 +40,15 @@ bool TrajectorySmoother::solveTrajectoryOpt()
   const int dim = 3;
   const int derivative_to_optimize = mav_trajectory_generation::derivative_order::SNAP;
 
-  for (int i = 0; i < downsampled_traj_.size(); i++)
+  for (int i = 0; i < rough_traj_.size(); i++)
   {
     mav_trajectory_generation::Vertex vertex(dim);
-    Vector3d desired_pos = downsampled_traj_[i].topRows<3>();
+    Vector3d desired_pos = rough_traj_[i].topRows<3>();
     vertex.addConstraint(mav_trajectory_generation::derivative_order::POSITION, desired_pos);
     vertices.push_back(vertex);
   }
   mav_trajectory_generation::Vertex vertex(dim);
-  vertex.addConstraint(mav_trajectory_generation::derivative_order::POSITION, downsampled_traj_[1].topRows<3>());
+  vertex.addConstraint(mav_trajectory_generation::derivative_order::POSITION, rough_traj_[0].topRows<3>());
   vertices.push_back(vertex);
 
   std::vector<double> segment_times;
@@ -128,55 +127,8 @@ void TrajectorySmoother::calcStatesAndInputsFromTrajectory()
   }
 }
 
-void TrajectorySmoother::downSampleAngle()
-{
-  int i = 0;
-  int j = 1;
-  downsampled_traj_.clear();
-  downsampled_traj_.push_back(sat(rough_traj_[0]));
-
-  Vector3d dir = rough_traj_[j+1] - rough_traj_[j];
-  dir /= dir.norm();
-  while (j < rough_traj_.size()-1)
-  {
-    Vector3d new_dir = rough_traj_[j+1] - rough_traj_[j];
-    new_dir /= new_dir.norm();
-
-    if (std::acos(new_dir.transpose() * dir) > M_PI * 25.0 / 180.0)
-    {
-      downsampled_traj_.push_back(sat(rough_traj_[j]));
-      dir = new_dir;
-    }
-    j++;
-  }
-}
-
-void TrajectorySmoother::downSampleDistance()
-{
-    int i = 0;
-    int j = 1;
-    downsampled_traj_.clear();
-    downsampled_traj_.push_back(sat(rough_traj_[0]));
-
-    Vector3d dir = rough_traj_[j+1] - rough_traj_[j];
-    dir /= dir.norm();
-    while (j < rough_traj_.size()-1)
-    {
-        Vector3d new_dir = rough_traj_[j+1] - rough_traj_[j];
-        new_dir /= new_dir.norm();
-
-        if (std::acos(new_dir.transpose() * dir) > M_PI * 25.0 / 180.0)
-        {
-            downsampled_traj_.push_back(sat(rough_traj_[j]));
-            dir = new_dir;
-        }
-        j++;
-    }
-}
-
 const void TrajectorySmoother::optimize(MatrixXd& states, MatrixXd& inputs)
 {
-  downSampleAngle();
   if (solveTrajectoryOpt())
   {
     calcStatesAndInputsFromTrajectory();
@@ -194,19 +146,16 @@ void TrajectorySmoother::log() const
 {
   ofstream time_file("../logs/time.bin");
   ofstream original_file("../logs/original.bin");
-  ofstream downsampled_file("../logs/downsampled.bin");
   ofstream optimized_states_file("../logs/optimized_states.bin");
   ofstream optimized_inputs_file("../logs/optimized_inputs.bin");
 
   original_file.write((char*)rough_traj_.data(), sizeof(double) * 4 * rough_traj_.size());
-  downsampled_file.write((char*)downsampled_traj_.data(), sizeof(double)*4*downsampled_traj_.size());
   time_file.write((char*)optimized_traj_t_.data(), sizeof(double) *optimized_traj_t_.size());
   optimized_states_file.write((char*)optimized_traj_states_.data(), sizeof(double)*optimized_traj_states_.rows()*optimized_traj_states_.cols());
   optimized_inputs_file.write((char*)optimized_traj_inputs_.data(), sizeof(double)*optimized_traj_inputs_.rows()*optimized_traj_inputs_.cols());
 
   time_file.close();
   original_file.close();
-  downsampled_file.close();
   optimized_states_file.close();
   optimized_inputs_file.close();
 }

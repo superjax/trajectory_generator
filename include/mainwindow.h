@@ -60,6 +60,8 @@
 #include <QLabel>
 #include <QPushButton>
 
+#include "trajectory.h"
+
 class ScribbleArea;
 class QDoubleSpinBox;
 class QVBoxLayout;
@@ -72,18 +74,23 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(int argc, char** argv);
 
+public slots:
+    void about();
+    void createTrajectory();
+    void handleFlyButton();
+    void handleRTHButton();
+
 protected:
     void closeEvent(QCloseEvent *event) override;
+    void timerEvent(QTimerEvent * ev) override;
 
-private slots:
-//    void open();
-//    void penColor();
-//    void penWidth();
-    void about();
-
-private:
+    void initROS(int argc, char** argv);
     void createActions();
     void createMenus();
+
+    void updateCommand();
+    void updateState();
+    void publishCommand();
 
     ScribbleArea *scribble_area_;
 
@@ -102,6 +109,8 @@ private:
     QLabel *acc_spin_box_label_;
     QPushButton *fly_button_;
     QPushButton *return_to_home_button_;
+    QPushButton *clear_screen_button_;
+    QPushButton *create_trajectory_button_;
 
     QAction *open_act_;
     QList<QAction *> save_as_acts_;
@@ -111,6 +120,35 @@ private:
     QAction *print_act_;
     QAction *clear_screen_act_;
     QAction *about_act_;
+
+
+    TrajectorySmoother* smoother_ = nullptr;
+    MatrixXd optimized_states_;
+    MatrixXd optimized_inputs_;
+    const double hover_throttle_ = 0.5;
+    const double sample_dt_ = 0.02;
+
+    Matrix<double, 10, 1> x_r_;
+    Matrix<double, 4, 1> u_r_;
+    Vector3d start_position_;
+
+    TrajOptROS* ros_node_;
+    int ros_node_timer_id_;
+
+    int publish_command_timer_id_;
+    int cmd_idx_;
+
+    enum
+    {
+        UNCOMMANDED,
+        FLY_TO_ALTITUDE,
+        FLY_TO_START_OF_TRAJECTORY,
+        FLY_TRAJECTORY,
+        FLY_TO_HOME,
+        LAND
+    };
+
+    int state_ = UNCOMMANDED;
 };
 
 #endif

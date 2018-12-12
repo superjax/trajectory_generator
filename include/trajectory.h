@@ -17,13 +17,11 @@ typedef vector<Vector3d, aligned_allocator<Vector3d>> trajVec;
 class TrajectorySmoother
 {
 public:
-  TrajectorySmoother(const trajVec& rough_traj, double delta_pos, double sample_dt);
+  TrajectorySmoother(const trajVec& rough_traj, double sample_dt);
   void setBounds(double max_x, double min_x, double max_y, double min_y, double max_v, double max_a);
   const void optimize(MatrixXd &states, MatrixXd &inputs);
 
 private:
-  void downSampleAngle();
-  void downSampleDistance();
   bool solveTrajectoryOpt();
   void calcStatesAndInputsFromTrajectory();
   void log() const;
@@ -31,7 +29,6 @@ private:
 
 
   const trajVec& rough_traj_;
-  trajVec downsampled_traj_;
   mav_trajectory_generation::Trajectory trajectory_;
   MatrixXd optimized_traj_states_;
   MatrixXd optimized_traj_inputs_;
@@ -39,7 +36,6 @@ private:
 
   ceres::Problem* problem_ = nullptr;
 
-  double delta_pos_;
   double sample_dt_;
   double hover_throttle_ = 0.5;
   double drag_term_ = 0.2;
