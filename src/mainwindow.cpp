@@ -5,8 +5,32 @@
 
 MainWindow::MainWindow(int argc, char **argv)
 {
+
     scribble_area_ = new ScribbleArea(this);
 
+    main_layout_ = new QHBoxLayout();
+    main_layout_->addWidget(scribble_area_);
+    main_layout_->setStretchFactor(scribble_area_, 1);
+
+    setupControls();
+    main_layout_->addLayout(control_layout_);
+
+    QWidget* central_widget = new QWidget();
+    setCentralWidget(central_widget);
+    centralWidget()->setLayout(main_layout_);
+
+    createActions();
+    createMenus();
+
+    initROS(argc, argv);
+
+    setWindowTitle(tr("TrajectoryGenerator"));
+    resize(835, 918);
+}
+
+
+void MainWindow::setupControls()
+{
     altitude_spin_box_ = new QDoubleSpinBox();
     connect(altitude_spin_box_, SIGNAL(valueChanged(double)), scribble_area_, SLOT(setAltitude(double)));
     altitude_spin_box_->setSingleStep(0.1);
@@ -33,10 +57,6 @@ MainWindow::MainWindow(int argc, char **argv)
     acc_spin_box_label_ = new QLabel();
     acc_spin_box_label_->setText("max accel (m/s^2):");
 
-
-    main_layout_ = new QHBoxLayout();
-    main_layout_->addWidget(scribble_area_);
-    main_layout_->setStretchFactor(scribble_area_, 1);
     control_layout_ = new QVBoxLayout();
 
     QHBoxLayout* alt = new QHBoxLayout();
@@ -80,20 +100,6 @@ MainWindow::MainWindow(int argc, char **argv)
     control_layout_->addWidget(create_trajectory_button_);
 
     control_layout_->addStretch(1);
-
-    main_layout_->addLayout(control_layout_);
-
-    QWidget* central_widget = new QWidget();
-    setCentralWidget(central_widget);
-    centralWidget()->setLayout(main_layout_);
-
-    createActions();
-    createMenus();
-
-    initROS(argc, argv);
-
-    setWindowTitle(tr("TrajectoryGenerator"));
-    resize(835, 918);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

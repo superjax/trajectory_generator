@@ -93,6 +93,8 @@ protected:
     void updateState();
     void publishCommand();
 
+    void setupControls();
+
     ScribbleArea *scribble_area_;
 
     QMenu *save_as_menu_;
