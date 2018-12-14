@@ -93,7 +93,12 @@ protected:
     void updateState();
     void publishCommand();
 
-    void setupControls();
+    void setupButtons();
+    void setupControlArea();
+    void setupEditArea();
+    void connectSignals();
+    QHBoxLayout* configureSpinBox(QDoubleSpinBox* spin_box, double step, double max,
+                                  double min, double value, string label);
 
     ScribbleArea *scribble_area_;
 
@@ -105,11 +110,9 @@ protected:
 
     QVBoxLayout *control_layout_;
     QDoubleSpinBox *altitude_spin_box_;
-    QLabel *altitude_spin_box_label_;
     QDoubleSpinBox *velocity_spin_box_;
-    QLabel *velocity_spin_box_label_;
     QDoubleSpinBox *acc_spin_box_;
-    QLabel *acc_spin_box_label_;
+
     QPushButton *fly_button_;
     QPushButton *delete_button_;
     QPushButton *return_to_home_button_;

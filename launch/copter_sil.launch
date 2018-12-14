@@ -33,6 +33,6 @@
   </node>
 
   <!-- Trajectory Generator GUI -->
-  <node name="trajopt_gui" pkg="trajectory_generator" type="TrajectoryGenerator"/>
+  <!-- <node name="trajopt_gui" pkg="trajectory_generator" type="TrajectoryGenerator"/> -->
 
 </launch>
