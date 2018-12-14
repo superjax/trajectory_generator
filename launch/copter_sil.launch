@@ -12,7 +12,7 @@
   </node>
 
   <!-- Load roscopter Parameters -->
-  <rosparam command="load" file="$(find roscopter_sim)/params/multirotor.yaml"/>
+  <rosparam command="load" file="$(find trajectory_generator)/params/multirotor.yaml"/>
 
   <!-- Estimator -->
   <node name="ekf" pkg="roscopter" type="ekf_node" output="screen">
@@ -33,6 +33,6 @@
   </node>
 
   <!-- Trajectory Generator GUI -->
-  <!-- <node name="trajopt_gui" pkg="trajectory_generator" type="TrajectoryGenerator"/> -->
+  <node name="trajopt_gui" pkg="trajectory_generator" type="TrajectoryGenerator"/>
 
 </launch>
