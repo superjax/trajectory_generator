@@ -23,7 +23,7 @@
   </node>
 
   <!-- RC -->
-  <node name="rc_joy" pkg="rosflight_utils" type="rc_joy">
+  <node name="rc_joy" pkg="rosflight_joy" type="rc_joy" output="screen">
     <remap from="RC" to="multirotor/RC"/>
   </node>
 
@@ -33,6 +33,6 @@
   </node>
 
   <!-- Trajectory Generator GUI -->
-  <!-- <node name="trajopt_gui" pkg="trajectory_generator" type="TrajectoryGenerator"/> -->
+  <node name="trajopt_gui" pkg="trajectory_generator" type="TrajectoryGenerator"/> 
 
 </launch>
